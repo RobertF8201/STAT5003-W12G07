@@ -1,0 +1,364 @@
+---
+title: "STAT5003 Assignment Title"
+author: "W12G07"
+output:
+  html_document:
+    code_folding: hide
+---
+# Introduction
+
+This template is provided as a guide, and you are welcome to modify it as needed.
+
+```{r library, message = FALSE, warning = FALSE}
+library(ggplot2)
+library(dplyr)
+library(readxl)  
+library(forcats)
+```
+
+
+
+```{r read dataset}
+df <- read_xlsx("./dataset/nsw_road_crash_merged.xlsx")
+```
+
+# 1 Framing & Dataset Selection
+
+## 1.1 Classification Task
+
+Based on environmental conditions and traffic unit characteristics, predict the severity of a road crash as a multi-class classification problem: Fatal, 
+Injury, or Non-casualty.
+
+                                                      
+## 1.2 Research Question
+
+Given environmental conditions (weather, natural lighting, road surface, speed limit) and traffic unit characteristics (number of traffic units involved, type of traffic units, road classification), can we predict the severity of a road crash in NSW?                                                        
+  
+## 1.3 Motivation                                                
+
+This research question has direct real-world relevance and affects the following groups:
+  
+NSW Traffic Management Authorities: By identifying key combinations of environmental and traffic characteristics that contribute to severe crashes, authorities can make targeted decisions such as adjusting speed limits, improving road design, and increasing enforcement during high-risk conditions.   
+
+Emergency Response Teams: In the early stages of a crash, predicting severity based on environmental conditions can help allocate ambulance and emergency resources more quickly and effectively.
+
+Policymakers and Insurance Institutions: Understanding which traffic unit types (e.g. heavy vehicles) pose higher risks under specific environmental conditions can inform more precise road safety policies and insurance pricing models.
+
+The dataset contains 92,189 crash records across NSW from 2020 to 2024, covering variables such as weather, natural lighting, road surface condition, speed limit, number of traffic units involved, and traffic unit types — fully supporting the environmental and traffic unit characteristics required by our research question.
+
+
+```{r}
+# R code....
+
+```
+
+# 2 Consider & Gather Data 
+## 2.1 Data Source The data used in this study is sourced from the Australian Government open data platform: 
+**NSW Crash Data Dataset:** 
+https://www.data.gov.au/data/dataset/nsw-2-nsw-crash-data 
+
+This dataset is published by Transport for NSW and provides detailed information on road crashes in NSW, including environemental conditions, road characteristics, vehicle types, and injury outcomes 
+
+For this study, we utilised the Crash Dataset (NSW Road Crash Data - 2020-2024 - CRASH.xlsx) and Traffic Unit Dataset (NSW Road Crash Data - 2020-2024 - TRAFFIC UNIT.xlsx ) for 2020-2024.The crash dataset contains environmental and road- related variables (e.g. weather, ) 
+
+- The crash dataset contains: 
+  - Crash Details (No. Killed. No. Seriously Injured, Severity of Crash) 
+  - time-related features (Day, Month, etc) 
+  - location attributes (Direction, latitude, longitude, Distance, etc) 
+  - environmental conditions (Weather, Natural Lighting, etc) 
+  
+- The traffic unit dataset contains vehicle-level variables: 
+  - TU type group (states vehicle type) 
+  - maneuver (states vehicle movement at time of crash) 
+  - TU role in first impact (states role of vehicle e.g. key traffic unit) 
+  - TU controlled flag (Whether classified as controlled or uncontrolled)
+  
+## 2.2 Dataset Overview
+
+The crash dataset contains 92,189 crash records, and the traffic dataset contains 170,962 records across NSW from 2020 to 2024. The dataset formed by merging both of these on Crash ID contains 170,962 records. The merged dataset is recorded at a vehicle level. This allows vehicle-specific charecteristics to be incorporated into the crash severity increasing the richness of our dataset.
+
+## 2.3 Dataset Justification
+
+The dataset meets several key requirements outlined in the assignment.
+
+**Large Dataset(>10,000 observations)**
+
+The merged dataset has 170,962 records, providing sufficient scale for robust statistical analysis and model training. The size enables us to undertake robust statistical analysis and model training. The large size enables reliable estimation of relationships between our target variable (crash severity) and its predictors while also supporting validation techniques such as test-train split.
+
+**Integrated Dataset (Multiple sources combined)**
+
+The dataset is formed by merging crash-level and traffic unit datasets using a common Crash ID. This integration combines environmental, spatial, and vehicle-level information. The process improves the richness of features available for analysis and enables more comprehensive modelling of crash severity.
+
+**Messy Dataset (Real-world data challenge)**
+
+As a real-world administrative dataset, it contains missing values and potential inconsistencies across variables such as weather, lighting, and vehicle characteristics. Additionally, the process of merging the crash dataset (92,189 records) with traffic unit dataset (170,962 records) introduces further missing values, as not all variables are available at both the crash and vehicle levels. When merged using Crash ID, crash-level attributes are duplicated across multiple vehicle records, while some vehicle-specific fields may not have corresponding values for all observations.
+
+This results in a dataset with increased sparsity and inconsistencies across columns, requiring preprocessing steps such as handling missing data, managing duplicated information, and cleaning categorical variables. These challenges reflect realistic data engineering issues encountered while integrating multiple real-world datsets.
+
+**Multi-class Classification Problem**
+The target variable, crash severity, is a multi-class outcome consisting of categories such as Fatal, Injury, and Non-casuality. These categories are derived from injury-related variables in the crash dataset (e.g., number killed and number seriously injured). This introduces challenges such as class imbalance, which must be considered when evaluating model performance.
+
+**2.4 Summary**
+Overall, the dataset is well-suited for this study as it is large, integrated, messy, and supports a multi-classification problem. Its combination of environmental, temporal, spatial, and vehicle-level features provides a strong foundation for modelling and predicting crash severity.
+```{r} 
+# R code...
+```
+
+# 3 Exploratory Data Analysis (EDA)
+## 3.1 Univariate Analysis
+### 3.1.1 Distribution
+```{r barpolot of degree of crash}
+ggplot(df, aes(x = fct_infreq(`Degree of crash`))) +
+    geom_bar() +
+    geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5) +
+    labs(title = "Distribution of Crash Severity", x = "Severity", y = "Count") +
+    theme_minimal() + theme(legend.position = "none")
+```
+```{r barplot of weather}
+ggplot(df, aes(x = fct_infreq(Weather))) +
+    geom_bar(fill = "steelblue") +
+    labs(title = "Distribution of Weather Conditions", x = "Weather", y = "Count") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r barplot of natrual lighting}
+ggplot(df, aes(x = fct_infreq(`Natural lighting`))) +
+  geom_bar(fill = "orange") +
+  labs(title = "Distribution of Natrual lighting", x = "Lighting", y = "Count") + 
+  theme_minimal()
+```
+```{r bar plot of speed limit}
+df$`Speed limit` <- factor(df$`Speed limit`,
+                              levels = c("10 km/h", "20 km/h", "30 km/h", "40 km/h",
+                                         "50 km/h", "60 km/h", "70 km/h", "80 km/h",
+                                         "90 km/h", "100 km/h", "110 km/h", "Unknown"))
+
+  ggplot(df, aes(x = `Speed limit`)) +
+    geom_bar(fill = "tomato") +
+    labs(title = "Distribution of Speed Limit", x = "Speed Limit", y = "Count") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r barplot of Surface condition}
+ggplot(df, aes(x = `Surface condition`)) + 
+  geom_bar(fill = "darkgreen") +
+  labs(title = "Distribution of Surface condition", x = "Surface condition", y = "Count") +
+  theme_minimal()
+```
+```{r barplot of Urbanisation}
+ggplot(df, aes(x = fct_infreq(Urbanisation))) + 
+  geom_bar(fill = "purple") + 
+  labs(title = "Distribution of Urbanisation", x = "Urbanisation", y = "Count") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r bar plot of TU type group}
+ggplot(df, aes(x = fct_infreq(`TU type group`))) +
+    geom_bar(fill = "steelblue") +
+    labs(title = "Distribution of Traffic Unit Type", x = "TU Type", y = "Count") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r barplot of Manoeuvre}
+ggplot(df, aes(x = fct_infreq(Manoeuvre))) +
+    geom_bar(fill = "coral") +
+    labs(title = "Distribution of Manoeuvre", x = "Manoeuvre", y = "Count") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r barplot of TU role in first impact}
+ggplot(df, aes(x = `TU role in first impact`)) +
+    geom_bar(fill = "gold") +
+    labs(title = "Distribution of TU Role in First Impact", x = "Role", y = "Count") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r barplot of TU group}
+df_tu <- df %>%
+    mutate(`TU group` = ifelse(`No. of traffic units involved` >= 6, "6+",
+                                as.character(`No. of traffic units involved`)))                                                                            
+df_tu$`TU group` <- factor(df_tu$`TU group`, levels = c("1", "2", "3", "4", "5", "6+"))                                                                  
+ggplot(df_tu, aes(x = `TU group`)) +                                                                                                                     
+geom_bar(fill = "slateblue") +                          
+labs(title = "Distribution of No. of Traffic Units Involved", x = "No. of Traffic Units", y = "Count") + theme_minimal() 
+```
+
+### 3.1.2 missing values
+```{r na check}
+colSums(is.na(df))
+```
+
+### 3.1.3 outliers for key variables.
+```{r summary of TU group}
+summary(df$`No. of traffic units involved`)
+```
+
+```{r}
+ggplot(df, aes(y = `No. of traffic units involved`)) +
+  geom_boxplot(fill = "steelblue", outlier.colour = "red", outlier.size = 1) +
+  scale_y_log10() +
+  labs(title = "Boxplot of No. of Traffic Units Involved (Log Scale)",
+       y = "No. of Traffic Units (log scale)") +
+  theme_minimal()
+```
+
+## 3.2 Bivariate Analysis
+### 3.2.1 Features vs Outcomes
+```{r weather vs degree of crash}
+ggplot(df, aes(x = Weather, fill = `Degree of crash`)) +
+  geom_bar(position = "fill") +
+  labs(title = "Crash Severity by Weather", y = "Proportion") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r speed limit vs degree of crash}
+ggplot(df, aes(x = `Speed limit`, fill = `Degree of crash`)) +
+  geom_bar(position = "fill") +
+  labs(title = "Crash Severity by Speed Limit", y = "Proportion") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r natural lighting vs degree of crash}
+ggplot(df, aes(x = `Natural lighting`, fill = `Degree of crash`)) +
+  geom_bar(position = "fill") +
+  labs(title = "Crash Severity by Natural Lighting", y = "Proportion") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r TU type group vs degree of crash}
+ggplot(df, aes(x = `TU type group`, fill = `Degree of crash`)) +
+  geom_bar(position = "fill") +
+  labs(title = "Crash Severity by TU Type", y = "Proportion") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r manoeuvre vs degree of crash}
+ggplot(df, aes(x = fct_infreq(factor(Manoeuvre)), fill = `Degree of crash`)) +
+  geom_bar(position = "fill") +
+  labs(title = "Crash Severity by Manoeuvre", x = "Manoeuvre", y = "Proportion") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 7))
+```
+```{r Urbanisation vs degree of crash}
+ggplot(df, aes(x = fct_infreq(factor(Urbanisation)), fill = `Degree of crash`)) +
+  geom_bar(position = "fill") +
+  labs(title = "Crash Severity by Urbanisation", x = "Urbanisation", y = "Proportion") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r Surface condition vs degree of crash}
+ggplot(df, aes(x = fct_infreq(factor(`Surface condition`)), fill = `Degree of crash`)) +
+  geom_bar(position = "fill") +
+  labs(title = "Crash Severity by Surface condition", x = "Surface condition", y = "Proportion") +
+  theme_minimal()
+```
+```{r TU controlled flag vs degree of crash}
+ggplot(df, aes(x = `TU controlled flag`, fill = `Degree of crash`)) +
+  geom_bar(position = "fill") +
+  labs(title = "Crash Severity by TU Controlled Flag", x = "Controlled", y = "Proportion") +
+  theme_minimal()
+```
+
+### 3.2.2 Features vs Features
+```{r weather vs natural lighting}
+df %>%
+  group_by(Weather, `Natural lighting`) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  filter(Weather != "Unknown", `Natural lighting` != "Unknown") %>%
+  ggplot(aes(x = `Natural lighting`, y = Weather, fill = count)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(title = "Weather vs Natural Lighting", fill = "Count") +
+  theme_minimal()
+```
+```{r speed limit vs urbanisation}
+df %>%
+  group_by(`Speed limit`, Urbanisation) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  ggplot(aes(x = Urbanisation, y = `Speed limit`, fill = count)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "tomato") +
+  labs(title = "Speed Limit vs Urbanisation", fill = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r Weather vs Surface condition}
+df %>%
+  group_by(Weather, `Surface condition`) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  filter(Weather != "Unknown", `Surface condition` != "Unknown") %>%
+  ggplot(aes(x = `Surface condition`, y = Weather, fill = count)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(title = "Weather vs Surface Condition", fill = "Count") +
+  theme_minimal()
+```
+```{r TU type group vs Manoeuvre}
+df %>%
+  group_by(`TU type group`, Manoeuvre) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  ggplot(aes(x = Manoeuvre, y = `TU type group`, fill = count)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "tomato") +
+  labs(title = "TU Type vs Manoeuvre", fill = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 7))
+```
+
+```{r Urbanisation vs Natural lighting}
+df %>%
+  group_by(Urbanisation, `Natural lighting`) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  filter(`Natural lighting` != "Unknown") %>%
+  ggplot(aes(x = `Natural lighting`, y = Urbanisation, fill = count)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "purple") +
+  labs(title = "Urbanisation vs Natural Lighting", fill = "Count") +
+  theme_minimal()
+```
+
+
+
+
+# 4.Project Planning
+## 4.1 Preprocessing Plan for handling your dataset’s specific requirements to make it clean and ready for modelling.
+
+## 4.2 Model Plan: based on EDA, propose at least 5 classification models* suited to the data/problem with justification.
+
+## 4.3Evaluation Plan: propose and justify performance metrics for final model evaluation.
+
+## 4.4 Timeline and Project Milestones
+The project timeline has been structured in alignment with the assignment deadlines to ensure clear and systematic progression of tasks from understanding the dataset up-to final model development and reporting. 
+
+**1-7 April: Problem Framing and Data Acquisition**
+Different datasets were evaluated and a final dataset was selected, along with finalization of the research question. The crash and Traffic Unit datasets (2020-2024) were sourced from the NSW Government open data platform. Initial inspection was carried out to understand the dataset structure, key variables, and differences. 
+
+**7-10 April: Data Integration and Initial Data Preparation**
+The crash and traffic unit datasets were merged using Crash ID, resulting in a unified dataset containing 170,962 records at the vehicle level. Initial data preparation involved examining missing values. identifying inconsistencies introduced via the merging, and understanding different variable types. Full prepossessing and feature engineering will be conducted in the modelling phase. 
+
+**10-14 April: Exploratory Data Analysis (EDA)**
+Univariate and bivariate analyses were performed to explore the distribution and relationship between variables. This includes examining environmental factors (weather, lighting), temporal variables(time of day, day of week), and vehicle-level characteristics (vehicle type, manoeuvre). Insights from EDA were used to inform feature selection and guide model planning.  
+
+**14-17 April: Feature Planning and Model Design**
+Based on EDA findings, relevant features were identified and transformations were planned, including the plan to encode categorical variables and aggregate vehicle-level information. A set of classification models were also selected for implementation in the next phase.
+
+**17-19 April: Plan & EDA Report Finalization**
+All findings were compiled into a structured R Markdown report and submitted by the deadline.
+
+**6-18 May: Model Development and Refinement**
+Classification models will be implemented, including baseline and advanced approaches. Preprocessing steps such as handling missing values, encoding categorical variables, and feature engineering will be carried out. Model refinement including hyperparameter tuning, will also be conducted to improve performance.
+
+**18-24 May: Model Evaluation and Final Report Preparation**
+Models will be evaluated using appropriate performance metrics, considering class imbalance in crash severity. The final model will be selected and justified. Results, insights, and interpretations will be consolidated into a final report.
+
+**25-31 May: Final Checks and Contribution Review**
+Final refinements will be made to ensure clarity and consistency of the report. Team contributions will be reviewed and documented.
+
+# References
+
+List all the references used throughout the report using APA7 Style.
+
+# AI Use Statment
+If applicable,
+
+I acknowledge the use of [AI tool + version, publisher and URL] to generate [summary of what was generated].
