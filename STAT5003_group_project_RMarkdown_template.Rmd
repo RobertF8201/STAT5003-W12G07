@@ -16,12 +16,31 @@ library(readxl)
 library(forcats)
 ```
 
-
-
-```{r read dataset}
-df <- read_xlsx("./dataset/nsw_road_crash_merged.xlsx")
+```{r read crash}
+df_crash <- read_xlsx("nsw_road_crash_data_2020-2024_crash.xlsx")
+str(df_crash)
+head(df_crash)
 ```
 
+```{r read unit}
+df_unit <- read_xlsx("nsw_road_crash_data_2020-2024_traffic_unit.xlsx")
+str(df_unit)
+head(df_unit)
+```
+
+
+```{r merge}
+df_merged <- left_join(df_crash, df_unit, by = "Crash ID")
+str(df_merged)
+head(df_merged)
+write.csv(df_merged, "nsw_road_crash_merged_2020_2024.csv", row.names = FALSE)
+```
+
+
+```{r inspect}
+cat("Merged:", nrow(df_merged), "rows,", ncol(df_merged), "cols\n")
+colSums(is.na(df_merged))
+```
 # 1 Framing & Dataset Selection
 
 ## 1.1 Classification Task
