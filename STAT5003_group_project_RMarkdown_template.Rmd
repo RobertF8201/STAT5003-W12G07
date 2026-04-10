@@ -4,10 +4,9 @@ author: "W12G07"
 output:
   html_document:
     code_folding: hide
+  pdf_document: default
 ---
 # Introduction
-
-This template is provided as a guide, and you are welcome to modify it as needed.
 
 ```{r library, message = FALSE, warning = FALSE}
 library(ggplot2)
@@ -16,20 +15,20 @@ library(readxl)
 library(forcats)
 ```
 
-```{r read crash}
+```{r read crash dataset}
 df_crash <- read_xlsx("nsw_road_crash_data_2020-2024_crash.xlsx")
 str(df_crash)
 head(df_crash)
 ```
 
-```{r read unit}
+```{r read traffic unit}
 df_unit <- read_xlsx("nsw_road_crash_data_2020-2024_traffic_unit.xlsx")
 str(df_unit)
 head(df_unit)
 ```
 
 
-```{r merge}
+```{r merge & save}
 df_merged <- left_join(df_crash, df_unit, by = "Crash ID")
 str(df_merged)
 head(df_merged)
@@ -40,36 +39,53 @@ write.csv(df_merged, "nsw_road_crash_merged_2020_2024.csv", row.names = FALSE)
 
 ## 1.1 Classification Task
 
-Based on environmental conditions and traffic unit characteristics, predict the severity of a road crash as a multi-class classification problem: Fatal, 
+Based on environmental conditions and traffic unit characteristics, predict the 
+severity of a road crash as a multi-class classification problem: Fatal, 
 Injury, or Non-casualty.
 
                                                       
 ## 1.2 Research Question
 
-Given environmental conditions (weather, natural lighting, road surface, speed limit) and traffic unit characteristics (number of traffic units involved, type of traffic units, road classification), can we predict the severity of a road crash in NSW?                                                        
+Given environmental conditions (weather, natural lighting, road surface, 
+speed limit) and traffic unit characteristics (number of traffic units involved, 
+type of traffic units, road classification), can we predict the severity 
+of a road crash in NSW?                                                        
   
 ## 1.3 Motivation                                                
 
-This research question has direct real-world relevance and affects the following groups:
+This research question has direct real-world relevance and affects the following 
+groups:
   
-NSW Traffic Management Authorities: By identifying key combinations of environmental and traffic characteristics that contribute to severe crashes, authorities can make targeted decisions such as adjusting speed limits, improving road design, and increasing enforcement during high-risk conditions.   
+NSW Traffic Management Authorities: By identifying key combinations of 
+environmental and traffic characteristics that contribute to severe crashes, 
+authorities can make targeted decisions such as adjusting speed limits, 
+improving road design, and increasing enforcement during high-risk conditions.   
 
-Emergency Response Teams: In the early stages of a crash, predicting severity based on environmental conditions can help allocate ambulance and emergency resources more quickly and effectively.
+Emergency Response Teams: In the early stages of a crash, predicting severity 
+based on environmental conditions can help allocate ambulance and emergency 
+resources more quickly and effectively.
 
-Policymakers and Insurance Institutions: Understanding which traffic unit types (e.g. heavy vehicles) pose higher risks under specific environmental conditions can inform more precise road safety policies and insurance pricing models.
+Policymakers and Insurance Institutions: Understanding which traffic unit types 
+(e.g. heavy vehicles) pose higher risks under specific environmental conditions 
+can inform more precise road safety policies and insurance pricing models.
 
-The dataset contains 92,189 crash records across NSW from 2020 to 2024, covering variables such as weather, natural lighting, road surface condition, speed limit, number of traffic units involved, and traffic unit types: fully supporting the environmental and traffic unit characteristics required by our research question.
+The dataset contains 92,189 crash records across NSW from 2020 to 2024, covering 
+variables such as weather, natural lighting, road surface condition, speed 
+limit, number of traffic units involved, and traffic unit types: fully 
+supporting the environmental and traffic unit characteristics required by our 
+research question.
 
-A predictive model for crash severity enables data-driven prioritization, this can help authorities allocate resources design intervention strategies, and form policy based on evidence rather than intuition. 
+A predictive model for crash severity enables data-driven prioritization, this 
+can help authorities allocate resources design intervention strategies, and form 
+policy based on evidence rather than intuition. 
 
-
+# 2 Consider & Gather Data 
 ```{r}
-df <- df_merged  # changing name 
-cat("Merged:", nrow(df), "rows,", ncol(df), "cols\n")
-colSums(is.na(df))
+cat("Merged:", nrow(df_merged), "rows,", ncol(df_merged), "cols\n")
+colSums(is.na(df_merged))
 ```
 ```{r na visualisation}
-na_counts <- colSums(is.na(df))
+na_counts <- colSums(is.na(df_merged))
 na_df <- data.frame(
   variable = names(na_counts),
   missing = na_counts
@@ -77,24 +93,30 @@ na_df <- data.frame(
 
 ggplot(na_df, aes(x = reorder(variable, -missing), y = missing)) +
   geom_bar(stat = "identity", fill = "tomato") +
-  labs(title = "Missing Values by Column", x = "Column", y = "Count") +
+  labs(title = "Figure 1: Missing Values by Column", x = "Column", y = "Count") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-# 2 Consider & Gather Data 
-## 2.1 Data Source The data used in this study is sourced from the Australian Government open data platform: 
-**NSW Crash Data Dataset:** 
+## 2.1 Data Source 
+
+The data used in this study is sourced from the Australian Government open data
+platform, **NSW Crash Data Dataset:** 
 https://www.data.gov.au/data/dataset/nsw-2-nsw-crash-data 
 
-This dataset is published by Transport for NSW and provides detailed information on road crashes in NSW, including environmental conditions, road characteristics, vehicle types, and injury outcomes 
+This dataset is published by Transport for NSW and provides detailed information 
+on road crashes in NSW, including environmental conditions, road characteristics
+, vehicle types, and injury outcomes 
 
-For this study, we utilized the Crash Dataset (NSW Road Crash Data - 2020-2024 - CRASH.xlsx) and Traffic Unit Dataset (NSW Road Crash Data - 2020-2024 - TRAFFIC UNIT.xlsx ) for 2020-2024.The crash dataset contains environmental and road- related variables (e.g. weather, road surface, and speed limit ) 
+For this study, we utilized the Crash Dataset (NSW Road Crash Data - 2020-2024 
+- CRASH.xlsx) and Traffic Unit Dataset (NSW Road Crash Data - 2020-2024 - 
+TRAFFIC UNIT.xlsx ) for 2020-2024.The crash dataset contains environmental and 
+road- related variables (e.g. weather, road surface, and speed limit ) 
 
 - The crash dataset contains: 
-  - Crash Details (No. Killed. No. Seriously Injured, Severity of Crash) 
+  - Crash Details (No. Killed, No. Seriously Injured, Severity of Crash) 
   - time-related features (Day, Month, etc) 
   - location attributes (Direction, latitude, longitude, Distance, etc) 
-  - environmental conditions (Weather, Natural Lighting, etc) 
+  - environmental conditions (Weather, Natural Lighting, Spped Limit, etc.) 
   
 - The traffic unit dataset contains vehicle-level variables: 
   - TU type group (states vehicle type) 
@@ -104,7 +126,11 @@ For this study, we utilized the Crash Dataset (NSW Road Crash Data - 2020-2024 -
   
 ## 2.2 Dataset Overview
 
-The crash dataset contains 92,189 crash records, and the traffic dataset contains 170,962 records across NSW from 2020 to 2024. The dataset formed by merging both of these on Crash ID contains 170,962 records. The merged dataset is recorded at a vehicle level. This allows vehicle-specific characteristics to be incorporated into the crash severity increasing the richness of our dataset.
+The crash dataset contains 92,189 crash records, and the traffic dataset 
+contains 170,962 records across NSW from 2020 to 2024. The dataset formed by 
+merging both of these on Crash ID contains 170,962 records. The merged dataset 
+is recorded at a vehicle level. This allows vehicle-specific characteristics to 
+be incorporated into the crash severity increasing the richness of our dataset.
 
 ## 2.3 Dataset Justification
 
@@ -112,22 +138,47 @@ The dataset meets several key requirements outlined in the assignment.
 
 **Large Dataset(>10,000 observations)**
 
-The merged dataset has 170,962 records, providing sufficient scale for robust statistical analysis and model training. The size enables us to undertake robust statistical analysis and model training. The large size enables reliable estimation of relationships between our target variable (crash severity) and its predictors while also supporting validation techniques such as test-train split.
+The merged dataset has 170,962 records, providing sufficient scale for robust 
+statistical analysis and model training. The large size enables reliable 
+estimation of relationships between our target variable (crash severity) and its 
+predictors while also supporting validation techniques such as test-train split.
 
 **Integrated Dataset (Multiple sources combined)**
 
-The dataset is formed by merging crash-level and traffic unit datasets using a common Crash ID. This integration combines environmental, spatial, and vehicle-level information. The process improves the richness of features available for analysis and enables more comprehensive modelling of crash severity.
+The dataset is formed by merging crash-level and traffic unit datasets using a 
+common Crash ID. This integration combines environmental, spatial, and vehicle-
+level information. The process improves the richness of features available for 
+analysis and enables more comprehensive modelling of crash severity.
 
 **Messy Dataset (Real-world data challenge)**
 
-As a real-world administrative dataset, it contains missing values and potential inconsistencies across variables such as weather, lighting, and vehicle characteristics. Additionally, the process of merging the crash dataset (92,189 records) with traffic unit dataset (170,962 records) introduces further missing values, as not all variables are available at both the crash and vehicle levels. When merged using Crash ID, crash-level attributes are duplicated across multiple vehicle records, while some vehicle-specific fields may not have corresponding values for all observations.
+As a real-world administrative dataset, it contains missing values and potential 
+inconsistencies across variables such as weather, lighting, and vehicle 
+characteristics. Additionally, the process of merging the crash dataset (92,189 
+records) with traffic unit dataset (170,962 records) exposes existing missing
+values, as not all variables are available at both the crash and vehicle levels. 
+When merged using Crash ID, crash-level attributes are duplicated across 
+multiple vehicle records, while some vehicle-specific fields may not have 
+corresponding values for all observations.
 
-This results in a dataset with increased sparsity and inconsistencies across columns, requiring preprocessing steps such as handling missing data, managing duplicated information, and cleaning categorical variables. As shown in the above figure, columns such as Primary hazardous feature, Primary temporary feature, and object hit 2 have the highest missingness(>95%) while Route no. and Other TU type have moderate missingness
+This results in a dataset with increased sparsity and inconsistencies across 
+columns, requiring preprocessing steps such as handling missing data, managing 
+duplicated information, and cleaning categorical variables. As shown in the 
+above figure, columns such as Primary hazardous feature, Primary temporary 
+feature, and object hit 2 have the highest missingness(>95%) while Route no. and 
+Other TU type have moderate missingness
 
 **Multi-class Classification Problem**
-The target variable, crash severity, is a multi-class outcome consisting of categories such as Fatal, Injury, and Non-causality. These categories are derived from injury-related variables in the crash dataset (e.g., number killed and number seriously injured). This introduces challenges such as class imbalance, which must be considered when evaluating model performance.
+
+The target variable, crash severity, is a multi-class outcome derived from 
+Degree of crash column in the crash dataset, consisting of  categories such as 
+Fatal, Injury, and Non-casualty. These categories are supported by injury-related 
+variables in the crash dataset (e.g., number killed and 
+number seriously injured). This introduces challenges such as class imbalance, 
+which must be considered when evaluating model performance.
 
 **2.4 Summary**
+
 Overall, the dataset is well-suited for this study as it is large, integrated, messy, and supports a multi-classification problem. Its combination of environmental, temporal, spatial, and vehicle-level features provides a strong foundation for modelling and predicting crash severity.
 ```{r} 
 # R code...
@@ -300,6 +351,7 @@ df_merged %>%
   labs(title = "Weather vs Natural Lighting", fill = "Count") +
   theme_minimal()
 ```
+
 ```{r speed limit vs urbanisation}
 df_merged %>%
   group_by(`Speed limit`, Urbanisation) %>%
@@ -322,6 +374,7 @@ df_merged %>%
   labs(title = "Weather vs Surface Condition", fill = "Count") +
   theme_minimal()
 ```
+
 ```{r TU type group vs Manoeuvre}
 df_merged %>%
   group_by(`TU type group`, Manoeuvre) %>%
@@ -354,34 +407,70 @@ df_merged %>%
 
 ## 4.2 Model Plan: based on EDA, propose at least 5 classification models* suited to the data/problem with justification.
 
-## 4.3Evaluation Plan: propose and justify performance metrics for final model evaluation.
+## 4.3Evaluation Plan: propose and justify performance metrics for final model 
+evaluation.
 
 ## 4.4 Timeline and Project Milestones
-The project timeline has been structured in alignment with the assignment deadlines to ensure clear and systematic progression of tasks from understanding the dataset up-to final model development and reporting. 
+
+The project timeline has been structured in alignment with the assignment 
+deadlines to ensure clear and systematic progression of tasks from understanding 
+the dataset up-to final model development and reporting. 
 
 **1-7 April: Problem Framing and Data Acquisition**
-Different datasets were evaluated and a final dataset was selected, along with finalization of the research question. The crash and Traffic Unit datasets (2020-2024) were sourced from the NSW Government open data platform. Initial inspection was carried out to understand the dataset structure, key variables, and differences. 
+
+Different datasets were evaluated and a final dataset was selected, along with 
+finalization of the research question. The crash and Traffic Unit datasets (2020
+-2024) were sourced from the NSW Government open data platform. Initial 
+inspection was carried out to understand the dataset structure, key variables, 
+and differences. 
 
 **7-10 April: Data Integration and Initial Data Preparation**
-The crash and traffic unit datasets were merged using Crash ID, resulting in a unified dataset containing 170,962 records at the vehicle level. Initial data preparation involved examining missing values, identifying inconsistencies introduced via the merging, and understanding different variable types. Full preprocessing and feature engineering will be conducted in the modelling phase. 
+
+The crash and traffic unit datasets were merged using Crash ID, resulting in a 
+unified dataset containing 170,962 records at the vehicle level. Initial data 
+preparation involved examining missing values, identifying inconsistencies 
+introduced via the merging, and understanding different variable types. Full 
+preprocessing and feature engineering will be conducted in the modelling phase. 
 
 **10-14 April: Exploratory Data Analysis (EDA)**
-Univariate and bivariate analyses were performed to explore the distribution and relationship between variables. This includes examining environmental factors (weather, lighting), temporal variables(time of day, day of week), and vehicle-level characteristics (vehicle type, manoeuvre). Insights from EDA were used to inform feature selection and guide model planning.  
+
+Univariate and bivariate analyses were performed to explore the distribution and 
+relationship between variables. This includes examining environmental factors 
+(weather, lighting), temporal variables(time of day, day of week), and vehicle-
+level characteristics (vehicle type, manoeuvre). Insights from EDA were used to 
+inform feature selection and guide model planning.  
 
 **14-17 April: Feature Planning and Model Design**
-Based on EDA findings, relevant features were identified and transformations were planned, including the plan to encode categorical variables and aggregate vehicle-level information. A set of classification models were also selected for implementation in the next phase.
+
+Based on EDA findings, relevant features were identified and transformations 
+were planned, including the plan to encode categorical variables and aggregate 
+vehicle-level information. A set of classification models were also selected for 
+implementation in the next phase.
 
 **17-19 April: Plan & EDA Report Finalization**
-All findings were compiled into a structured R Markdown report and submitted by the deadline.
+
+All findings were compiled into a structured R Markdown report and submitted by 
+the deadline.
 
 **6-18 May: Model Development and Refinement**
-Classification models will be implemented, including baseline and advanced approaches. Preprocessing steps such as handling missing values, encoding categorical variables, and feature engineering will be carried out. Model refinement including hyperparameter tuning, will also be conducted to improve performance.
+
+Classification models will be implemented, including baseline and advanced 
+approaches. Preprocessing steps such as handling missing values, encoding 
+categorical variables, and feature engineering will be carried out. Model 
+refinement including hyperparameter tuning, will also be conducted to improve 
+performance.
 
 **18-24 May: Model Evaluation and Final Report Preparation**
-Models will be evaluated using appropriate performance metrics, considering class imbalance in crash severity. The final model will be selected and justified. Results, insights, and interpretations will be consolidated into a final report.
+
+Models will be evaluated using appropriate performance metrics, considering 
+class imbalance in crash severity. The final model will be selected and 
+justified. Results, insights, and interpretations will be consolidated into a 
+final report.
 
 **25-31 May: Final Checks and Contribution Review**
-Final refinements will be made to ensure clarity and consistency of the report. Team contributions will be reviewed and documented.
+
+Final refinements will be made to ensure clarity and consistency of the report. 
+Team contributions will be reviewed and documented.
 
 # References
 
