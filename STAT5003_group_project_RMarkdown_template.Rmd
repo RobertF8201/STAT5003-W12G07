@@ -457,10 +457,148 @@ lighting condition across all areas.
 # 4.Project Planning
 ## 4.1 Preprocessing Plan for handling your dataset’s specific requirements to make it clean and ready for modelling.
 
+To transform the raw NSW Road Crash Data into a clean, model-ready dataset, we propose the following preprocessing pipeline. All data-dependent steps (imputation, encoding, scaling, resampling) will be performed **within cross-validation folds** to prevent data leakage (James et al., 2021).
+
+### Step 1: Data Integration
+
+The dataset consists of two linked tables — **CRASH** (92,189 rows × 50 columns) and **TRAFFIC UNIT** (170,962 rows × 10 columns) — connected via `Crash ID`. Since this is a one-to-many relationship, we will **aggregate** the TRAFFIC UNIT table to crash level before joining:
+
+-   Binary flags for vehicle type presence: `has_heavy_vehicle`, `has_motorcycle`, `has_pedestrian`, `has_bicycle`
+-   Count of distinct TU types per crash
+-   Binary flag for whether any object was hit
+
+The aggregated table will be **left-joined** to CRASH on `Crash ID`, producing a single analysis-ready table.
+
+### Step 2: Feature Selection & Removal
+
+| Category | Columns | Reason |
+|----|----|----|
+| Identifiers | `Crash ID` | Not predictive |
+| Target leakage | `Degree of crash - detailed`, `No. killed`, `No. seriously injured`, `No. moderately injured`, `No. minor-other injured` | Direct consequences of severity — would leak the target |
+| Redundant location | `Street of crash`, `Identifying feature`, `Town`, `Route no.`, `Street type`, `Direction` | High cardinality; location already captured by `LGA`, `Lat/Lon`, `Urbanisation` |
+| Near-zero variance | `Primary temporary feature` (98.5% NA), `Primary hazardous feature` (98.0% NA), `DCA supplement` (86.8% NA) | Too sparse to be informative |
+
+Retained features cover **environmental conditions** (weather, lighting, road surface, speed limit), **road characteristics** (alignment, type of location), **temporal patterns** (month, day of week, time interval), **spatial context** (urbanisation, LGA), and **traffic unit characteristics** (aggregated from TU table).
+
+### Step 3: Missing Value Handling
+
+| Variable | Missing % | Strategy |
+|----|----|----|
+| `Primary permanent feature` | 73.0% | Convert to binary indicator `has_permanent_feature`; drop original |
+| `Other TU type` | 30.4% | Recode `NA` → `"Single vehicle"` (missing implies single-vehicle crash) |
+| Remaining categorical | \<1% | Treat `NA` as an explicit `"Unknown"` level |
+| Remaining numeric | \<1% | Median imputation (within training fold) |
+
+For categorical variables, treating missing as its own category is justified when the missingness pattern itself is informative (Little, 1988). We will verify this using `naniar::mcar_test()` and visualise with `visdat::vis_miss()`.
+
+### Step 4: Feature Engineering
+
+Derived features to enhance predictive power:
+
+-   **Temporal**: `is_weekend` (Sat/Sun), `is_rush_hour` (7–9am / 4–6pm)
+-   **Environmental**: `is_night` (Darkness/Twilight), `is_wet` (non-Dry surface)
+-   **Speed bands**: Group `Speed limit` into `≤50`, `60–80`, `90–100`, `110+`, `Other`
+-   **Multi-vehicle**: Binary flag from `No. of traffic units involved > 1`
+
+### Step 5: Outlier Detection
+
+-   **Latitude/Longitude**: Remove records outside NSW bounds (lat: −37.5 to −28.0, lon: 140.0 to 154.0)
+-   **Distance**: Inspect for extreme values; winsorise at the 99th percentile if needed
+
+### Step 6: Encoding Categorical Variables
+
+Encoding strategy is model-dependent:
+
+-   **Tree-based models** (Random Forest, XGBoost): Use R `factor` type directly — no encoding needed
+-   **Distance/linear models** (kNN, SVM, Logistic Regression, LDA): One-hot encoding for nominal variables; ordinal encoding for ordered variables (e.g., speed bands)
+-   **High-cardinality**: Pool `LGA` levels with \<1% of observations into `"Other"` to reduce dimensionality
+
+### Step 7: Feature Scaling
+
+-   **kNN and SVM** are distance-based and sensitive to feature scale → apply **z-score standardisation** to all numeric features within each training fold
+-   **Tree-based models** are scale-invariant → no scaling needed
+
+### Step 8: Class Imbalance Handling
+
+The target `Degree of crash` is highly imbalanced (Fatal: 1.5%, Injury: 66.4%, Non-casualty: 32.1%). Resampling will be applied **within the training fold only** to prevent leakage (Chawla et al., 2002):
+
+1.  **SMOTE** (`themis::step_smote`): Synthesise minority-class samples, especially for Fatal
+2.  **Down-sampling**: Undersample the majority class as a simpler alternative
+3.  Both strategies will be compared during model tuning to select the best approach
+
+### Step 9: Train/Test Split & Cross-Validation
+
+-   **Holdout**: 80/20 stratified split by `Degree of crash`
+-   **Nested CV**: Outer 5-fold for generalisation error; inner 5-fold for hyperparameter tuning
+-   All preprocessing steps will be embedded in a `tidymodels::recipe` pipeline so that transformations are fitted on training data only within each fold
+
+### Pipeline Summary
+
+```         
+Raw Data (CRASH + TRAFFIC UNIT)
+  │
+  ├─ 1. Aggregate TRAFFIC UNIT → crash-level features
+  ├─ 2. Left join on Crash ID
+  ├─ 3. Remove identifiers, leakage vars, near-zero-variance cols
+  ├─ 4. Feature engineering (binary flags, speed bands, temporal)
+  ├─ 5. Outlier removal (geospatial bounds)
+  ├─ 6. Train/Test split (80/20, stratified)
+  │
+  └─ Within each CV fold (training only):
+       ├─ 7. Missing value handling
+       ├─ 8. Categorical encoding (one-hot / factor)
+       ├─ 9. Feature scaling (for kNN/SVM/LR)
+       └─ 10. SMOTE / down-sampling for class imbalance
+```
+
 ## 4.2 Model Plan: based on EDA, propose at least 5 classification models* suited to the data/problem with justification.
 
-## 4.3Evaluation Plan: propose and justify performance metrics for final model 
+Based on the findings from EDA, we propose six classification models to predict **Degree of Crash** (a three-class outcome: Fatal, Injury, and Non-casualty). The EDA revealed that the target variable is extremely imbalanced—Fatal crashes account for a small proportion of the 92,189 observations—and that all predictor variables are categorical (e.g., `Weather`, `Natural lighting`, `Surface condition`, `Speed limit`, `Urbanisation`, `TU type group`). These characteristics directly inform the choice of models below. 
+
+All models will be implemented in R using the `caret` package for a unified training and cross-validation interface.
+
+### 1. Multinomial Logistic Regression (Baseline)
+- **Justification:** Proposed as our interpretable baseline model. It produces interpretable coefficients (log-odds) for each predictor category, which are meaningful for road safety stakeholders (e.g., quantifying how much driving at night increases the log-odds of a fatal crash relative to daylight). All subsequent models will be benchmarked against this baseline.
+- **Implementation:** Categorical predictors will be encoded as dummy variables. We will use `multinom()` from the `nnet` package, utilising the `class_weight` argument to account for class imbalance.
+
+### 2. Decision Tree Classifier (CART)
+- **Justification:** Chosen for its full interpretability and ability to capture non-linear interactions between categorical features (e.g., capturing the joint rule "high speed limit AND rural area $\rightarrow$ higher fatal risk" in a single branch).
+- **Implementation:** Implemented using the `rpart` package. Tree depth will be tuned via cross-validation to prevent overfitting, and the resulting tree will be visualised using `rpart.plot` to communicate high-risk conditions to non-technical audiences.
+
+### 3. Random Forest Classifier
+- **Justification:** Extends the decision tree by training an ensemble of trees on bootstrap samples, significantly reducing variance. It provides variable importance scores to identify which predictors most strongly impact crash severity. 
+- **Implementation:** With >90k observations, it is computationally feasible using the `randomForest` package. Class imbalance will be handled via the `classwt` argument in `randomForest()`.
+
+### 4. Gradient Boosting Machine (XGBoost)
+- **Justification:** Proposed as our primary high-performance model. By sequentially correcting misclassifications from prior trees, it is particularly effective at learning from the rare minority class (Fatal crashes) by exploiting subtle, high-value signals in the features.
+- **Implementation:** Implemented using the `xgboost` package. Hyperparameters (`nrounds`, `max_depth`, `eta`) will be tuned via `caret::trainControl`. The `scale_pos_weight` parameter will be adjusted to address the class imbalance.
+
+### 5. K-Nearest Neighbours (KNN)
+- **Justification:** Included as a non-parametric, instance-based comparison model to test whether crash severity is locally consistent in feature space (i.e., whether crashes occurring under similar conditions tend to share the same outcome).
+- **Implementation:** Implemented using the `class` package. Since all features are categorical, the Gower distance metric (via the `gower` package) will be used. The optimal value of $k$ will be selected via cross-validation.
+
+### 6. Naive Bayes
+- **Justification:** A natural fit for datasets where all features are categorical. It serves as a strong probabilistic benchmark: if more complex models cannot substantially outperform it, this suggests that the individual distributions of features (e.g., Weather, Speed limit) already carry most of the predictive information.
+- **Implementation:** Implemented using the `e1071` package. Under the conditional independence assumption, it is extremely fast to train and provides probability estimates for each severity class.
+
+## 4.3 Evaluation Plan: propose and justify performance metrics for final model 
 evaluation.
+
+Standard accuracy is an inadequate evaluation metric for this problem due to severe class imbalance. A classifier predicting *Injury* for every observation would achieve high accuracy while completely failing to identify any *Fatal* crash. The metrics below are selected to reflect both overall classifier performance and the disproportionate importance of correctly identifying fatal outcomes.
+
+### Performance Metrics
+
+- **Macro-Averaged F1 Score (Primary):** Computes the F1 score for each of the three classes independently and then averages them with equal weight. This ensures that performance on the rare *Fatal* class receives the same weight as the dominant *Injury* class. This will be our primary metric for ranking models.
+- **Fatal Class Recall (Primary Constraint):** Measures the proportion of actual *Fatal* crashes correctly identified. A model with high Macro F1 but low Fatal recall will be deprioritised, as failing to flag potentially fatal conditions is the most consequential error.
+- **Weighted F1 Score (Secondary):** Averages F1 per class weighted by each class's support. It provides a realistic picture of overall performance on the true class distribution.
+- **Cohen's Kappa ($\kappa$) (Secondary):** Adjusts accuracy for the agreement expected by chance. Computed directly by `caret::confusionMatrix()`, providing a clear sanity check (values near 0 indicate performance no better than random guessing).
+- **Confusion Matrix:** Evaluated via `caret::confusionMatrix()` and visualised as a heatmap using `ggplot2` to explicitly monitor misclassification directions (e.g., dangerous errors where Fatal crashes are predicted as Injury).
+
+### Validation Strategy
+
+- **Cross-Validation:** Stratified 5-fold cross-validation will be applied to the training data using `caret::trainControl(method = "cv", number = 5, classProbs = TRUE, savePredictions = TRUE)`. This ensures class proportions are preserved across all folds.
+- **Temporal Split:** We will use a time-based holdout strategy: **2020–2023 data for training/CV** and **2024 data as the held-out test set**. This reflects real-world deployment conditions where historical data predicts future crashes.
+- **Unbiased Estimation:** The final held-out test set (2024) will be evaluated *once only* after model selection and tuning are complete to obtain an unbiased estimate of generalisation performance.
 
 ## 4.4 Timeline and Project Milestones
 
