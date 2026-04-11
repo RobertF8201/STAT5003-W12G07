@@ -15,24 +15,28 @@ library(readxl)
 library(forcats)
 ```
 
-```{r read crash dataset}
+```{r read crash dataset, message=FALSE, warning=FALSE}
 df_crash <- read_xlsx("nsw_road_crash_data_2020-2024_crash.xlsx")
 str(df_crash)
 head(df_crash)
 ```
 
-```{r read traffic unit}
+```{r read traffic unit, message=FALSE, warning=FALSE}
 df_unit <- read_xlsx("nsw_road_crash_data_2020-2024_traffic_unit.xlsx")
 str(df_unit)
 head(df_unit)
 ```
 
 
-```{r merge & save}
+```{r merge & save, message=FALSE, warning=FALSE}
 df_merged <- left_join(df_crash, df_unit, by = "Crash ID")
 str(df_merged)
 head(df_merged)
 write.csv(df_merged, "nsw_road_crash_merged_2020_2024.csv", row.names = FALSE)
+```
+
+```{r, message=FALSE, warning=FALSE}
+#df_merged <- read_xlsx("./dataset/nsw_road_crash_merged.xlsx")
 ```
 
 # 1 Framing & Dataset Selection
@@ -187,6 +191,7 @@ foundation for modelling and predicting crash severity.
 # R code...
 ```
 
+
 # 3 Exploratory Data Analysis (EDA)
 ## 3.1 Univariate Analysis
 ### 3.1.1 Distribution
@@ -216,11 +221,11 @@ df_merged$`Speed limit` <- factor(df_merged$`Speed limit`,
                                          "50 km/h", "60 km/h", "70 km/h", "80 km/h",
                                          "90 km/h", "100 km/h", "110 km/h", "Unknown"))
 
-  ggplot(df_merged, aes(x = `Speed limit`)) +
-    geom_bar(fill = "tomato") +
-    labs(title = "Distribution of Speed Limit", x = "Speed Limit", y = "Count") +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggplot(df_merged, aes(x = `Speed limit`)) +
+  geom_bar(fill = "tomato") +
+  labs(title = "Distribution of Speed Limit", x = "Speed Limit", y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 ```{r barplot of Surface condition}
 ggplot(df_merged, aes(x = `Surface condition`)) + 
@@ -265,33 +270,15 @@ ggplot(df_tu, aes(x = `TU group`)) +
 geom_bar(fill = "slateblue") +                          
 labs(title = "Distribution of No. of Traffic Units Involved", x = "No. of Traffic Units", y = "Count") + theme_minimal() 
 ```
-The distribution of crash severity reveals significant class imbalance, we can 
-see Injury crashes being the most common (114,355) followed by Non-casualty 
-(54,191), and Fatal crashes being in minority (2,416). The majority of crashes 
-are occurring during fine weather (>150,000) in daylight conditions, suggestive
-of higher traffic volume rather than driving conditions like visibility drive 
-overall crash frequency. Road surfaces were also predominantly dry, consistent
-with fine weather dominance. Speed limits of 50 km/h and 60 km/h accounted for 
-highest number of crashes, reflecting urban driving environments, this is also 
-supported by Sydney metro area being the most common urbanization category. 
-Car/car derivative is by far the most common traffic unit type (~115,000), 
-followed by light trucks and motorcycles. The most frequent manoeuvre was 
-"Proceeding in lane" (~1000,000), with all other manoeuvres being substantially
-less frequent, indicating highly skewed data. The majority of traffic units were
-classified as Key traffic units in the first impact. The number of traffic units 
-involved is right-skewed, with 2-vehicle crashes being the most common, followed
-by single and 3-vehicle crashes. Crashes involving 4 or more vehicles are rare.
+
+The data shows significant class imbalance: Injury crashes are most frequent (114,355), followed by Non-casualty (54,191), with Fatal crashes being the minority (2,416). Most crashes occur in fine weather, daylight, and dry road conditions, suggesting traffic volume has more influence than weather on crash frequency. The 50-60 km/h speed zones account for the most crashes, with Sydney metro being the dominant urbanisation category. Car/car derivatives are the most common vehicle type, "Proceeding in lane" is the most frequent manoeuvre (~100,000), with all other manoeuvres being substantially less frequent. Key traffic units account for the largest share of roles in the first impact, and 2-vehicle crashes are the most common collision type.
+
 ### 3.1.2 missing values
 ```{r na check}
 colSums(is.na(df_merged))
 ```
-The missingness analysis confirms the core variables used for modelling 
-(Weather, Speed limit, Natural lighting, Degree of crash) have no missing values.
-High missingness in Primary hazardous feature (168,803), Primary temporary 
-feature (168,406), and object hit 2 (165,996) reflects their conditional nature,
-these fields are only populated when applicable. We will drop these columns 
-during pre-processing. Route no (62,005) and Other TU type (29,195) have 
-moderate missingness and will require further consideration.
+
+Core modelling variables (Weather, Speed limit, Natural lighting, Degree of crash) have no missing values. Primary hazardous feature (168,803), Primary temporary feature (168,406), and Object hit 2 (165,996) have very high missingness due to their conditional nature and will be dropped during preprocessing.
 
 ### 3.1.3 outliers for key variables.
 ```{r summary of TU group}
@@ -306,11 +293,8 @@ ggplot(df_merged, aes(y = `No. of traffic units involved`)) +
        y = "No. of Traffic Units (log scale)") +
   theme_minimal()
 ```
-The number of traffic units involved has a median 2 and mean 2.149, with IQR 
-concentrated between 1 and 2. The boxplot reveals multiple outliers above 3, 
-with a maximum of 26 which represents a large multi-vehicle crash that is 
-statistically rare. These extreame values may be capped or treated separately 
-during preprocessing.
+
+The number of traffic units has a median of 2 and mean of 2.149, with IQR concentrated between 1 and 2. The maximum value of 26 is an extreme outlier and may be capped during preprocessing.
 
 ## 3.2 Bivariate Analysis
 ### 3.2.1 Features vs Outcomes
@@ -368,19 +352,9 @@ ggplot(df_merged, aes(x = `TU controlled flag`, fill = `Degree of crash`)) +
   labs(title = "Crash Severity by TU Controlled Flag", x = "Controlled", y = "Proportion") +
   theme_minimal()
 ```
-Speed limits show the strongest relationship with crash severity, higher speed 
-zones (100-110 km/h) have noticeable greater proportions of Fatal crashes, while
-lower speed zones (10-30 km/h) are dominated by Injury and Non-casualty outcomes. 
-Natural lighting shows slightly higher association of Darkness than Daylight for 
-Fatal outcomes. Weather and surface show uniform severity distributions across 
-categories, suggesting limited discriminative power. Pedestrians and motorcycles
-show a high proportion of Injury crashes relative to other vehicle types, while 
-non-motorized vehicles show a notably high Non-casualty proportion (75%). TU 
-controlled flag shows a clear difference, uncontrolled units (N) have a much
-higher Non-casualty proportion (~55%) compared to controlled units (Y), which 
-are more associated with Injury crashes. Country non-urban areas show a slightly 
-elevated Fatal proportion compared to Sydney metro, consistent with higher speed 
-limits in rural areas.  
+
+Speed limit shows the strongest relationship with crash severity, with higher speed zones (100-110 km/h) having noticeably greater Fatal proportions. Pedestrians and motorcycles show elevated Injury proportions, while uncontrolled traffic units have higher Non-casualty proportions. Country non-urban areas show slightly higher Fatal proportions compared to urban areas, consistent with higher rural speed limits.
+
 ### 3.2.2 Features vs Features
 ```{r weather vs natural lighting}
 df_merged %>%
@@ -440,19 +414,8 @@ df_merged %>%
   labs(title = "Urbanisation vs Natural Lighting", fill = "Count") +
   theme_minimal()
 ```
-Fine weather is strongly concentrated in Daylight and Darkness conditions, while 
-Rain occurs across both Daylight and Darkness, confirming expected weather-
-lighting interactions. Speed limit is strongly associated with urbanization, 
-50-60 km/h zones dominate Sydney metro areas, while 100-110 km/h zones are 
-concentrated in Country non-urban regions. Fine weather also shows overwhelming 
-paring with dry surface conditions, while Raining aligns almost exclusively with
-wet surfaces, confirming internal consistency in our dataset. Car/car 
-derivatives proceeding in lane dominates the TU Type vs Manoeuvre heatmap, 
-reflecting their overall frequency in the dataset. Sydney metro area has the 
-highest concentration of crashes in both Daylight and Darkness conditions, 
-reflecting its overall higher crash volume. All urban categories show crashes 
-predominantly occurring in Daylight, with Darkness being the second most common 
-lighting condition across all areas. 
+
+Fine weather strongly aligns with dry surfaces while rain almost exclusively pairs with wet conditions, confirming dataset consistency. Speed limits of 50-60 km/h dominate Sydney metro areas while 100-110 km/h zones concentrate in Country non-urban regions. Crashes predominantly occur in daylight across all urbanisation categories, with Sydney metro having the highest overall crash volume.
 
 # 4.Project Planning
 ## 4.1 Preprocessing Plan for handling your dataset’s specific requirements to make it clean and ready for modelling.
