@@ -120,7 +120,7 @@ road- related variables (e.g. weather, road surface, and speed limit )
   - Crash Details (No. Killed, No. Seriously Injured, Severity of Crash) 
   - time-related features (Day, Month, etc) 
   - location attributes (Direction, latitude, longitude, Distance, etc) 
-  - environmental conditions (Weather, Natural Lighting, Spped Limit, etc.) 
+  - environmental conditions (Weather, Natural Lighting, Speed Limit, etc.) 
   
 - The traffic unit dataset contains vehicle-level variables: 
   - TU type group (states vehicle type) 
@@ -187,10 +187,6 @@ Overall, the dataset is well-suited for this study as it is large, integrated,
 messy, and supports a multi-classification problem. Its combination of 
 environmental, temporal, spatial, and vehicle-level features provides a strong 
 foundation for modelling and predicting crash severity.
-```{r} 
-# R code...
-```
-
 
 # 3 Exploratory Data Analysis (EDA)
 ## 3.1 Univariate Analysis
@@ -204,10 +200,12 @@ ggplot(df_merged, aes(x = fct_infreq(`Degree of crash`))) +
 ```
 ```{r barplot of weather}
 ggplot(df_merged, aes(x = fct_infreq(Weather))) +
-    geom_bar(fill = "steelblue") +
-    labs(title = "Distribution of Weather Conditions", x = "Weather", y = "Count") +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  geom_bar(fill = "steelblue") +
+  labs(title = "Distribution of Weather Conditions",
+       x = "Weather", y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(labels = scales::comma)
 ```
 ```{r barplot of natrual lighting}
 ggplot(df_merged, aes(x = fct_infreq(`Natural lighting`))) +
@@ -231,7 +229,8 @@ ggplot(df_merged, aes(x = `Speed limit`)) +
 ggplot(df_merged, aes(x = `Surface condition`)) + 
   geom_bar(fill = "darkgreen") +
   labs(title = "Distribution of Surface condition", x = "Surface condition", y = "Count") +
-  theme_minimal()
+  theme_minimal()+
+  scale_y_continuous(labels = scales::comma)
 ```
 ```{r barplot of Urbanisation}
 ggplot(df_merged, aes(x = fct_infreq(Urbanisation))) + 
@@ -416,6 +415,175 @@ df_merged %>%
 ```
 
 Fine weather strongly aligns with dry surfaces while rain almost exclusively pairs with wet conditions, confirming dataset consistency. Speed limits of 50-60 km/h dominate Sydney metro areas while 100-110 km/h zones concentrate in Country non-urban regions. Crashes predominantly occur in daylight across all urbanisation categories, with Sydney metro having the highest overall crash volume.
+
+## 3.3 Data Visualisation: Additional Graphs/Tables with Insights
+To further support the exploratory analysis, additional visualisations and summary tables were produced to reveal temporal, spatial, and contextual patterns in crash severity. These displays go beyond simple univariate and bivariate summaries by highlighting high-risk combinations of conditions and identifying patterns that may influence feature selection and model choice.
+
+### 3.3.1 Heatmap-day-time
+```{r eda-helpers, message=FALSE, warning=FALSE}
+library(knitr)
+
+# Ensure ordered factors for time-related variables
+day_levels <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+df_merged$`Day of week of crash` <- factor(df_merged$`Day of week of crash`, levels = day_levels)
+
+# If Two-hour intervals is character, keep original order as it appears
+df_merged$`Two-hour intervals` <- factor(df_merged$`Two-hour intervals`,
+                                         levels = unique(df_merged$`Two-hour intervals`))
+
+# Order reporting year if needed
+df_merged$`Reporting year` <- factor(df_merged$`Reporting year`,
+                                     levels = sort(unique(df_merged$`Reporting year`)))
+```
+```{r heatmap-day-time}
+df_merged %>%
+  group_by(`Day of week of crash`, `Two-hour intervals`) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  ggplot(aes(x = `Two-hour intervals`, y = `Day of week of crash`, fill = count)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(
+    title = "Crash Frequency by Day of Week and Time Interval",
+    x = "Two-hour Interval",
+    y = "Day of Week",
+    fill = "Count"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+The heatmap shows that crash frequency is concentrated in specific time periods rather than being evenly distributed across the week. In particular, daytime and peak commuting periods tend to have the highest crash counts, suggesting that traffic exposure and congestion may play a major role in crash occurrence. This pattern indicates that time-related variables are likely to be useful predictors in the classification task.
+
+### 3.3.2 Severity-by-year
+```{r severity-by-year}
+df_merged %>%
+  group_by(`Reporting year`, `Degree of crash`) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  ggplot(aes(x = `Reporting year`, y = count, fill = `Degree of crash`)) +
+  geom_col(position = "fill") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Proportion of Crash Severity by Reporting Year",
+    x = "Reporting Year",
+    y = "Proportion",
+    fill = "Crash Severity"
+  ) +
+  theme_minimal()
+```
+The proportional distribution of crash severity appears relatively stable across reporting years, with Injury crashes consistently dominating the dataset and Fatal crashes remaining the minority class. This suggests that class imbalance is a persistent characteristic of the data rather than a one-off issue in a single year, reinforcing the need for imbalance-aware modelling and evaluation.
+
+### 3.3.3 Fatal-rate-speed-urban
+```{r fatal-rate-speed-urban}
+fatal_heatmap <- df_merged %>%
+  filter(!is.na(`Speed limit`), !is.na(Urbanisation), !is.na(`Degree of crash`)) %>%
+  group_by(`Speed limit`, Urbanisation) %>%
+  summarise(
+    total = n(),
+    fatal_rate = mean(`Degree of crash` == "Fatal"),
+    .groups = "drop"
+  ) %>%
+  filter(total >= 100)  # avoid unstable rates from tiny groups
+
+ggplot(fatal_heatmap, aes(x = Urbanisation, y = `Speed limit`, fill = fatal_rate)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "darkred",
+                      labels = scales::percent_format(accuracy = 0.1)) +
+  labs(
+    title = "Fatal Crash Proportion by Speed Limit and Urbanisation",
+    x = "Urbanisation",
+    y = "Speed Limit",
+    fill = "Fatal Proportion"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+The heatmap suggests that the proportion of Fatal crashes is higher in high-speed areas, especially in less urbanised regions. This supports the earlier bivariate findings and indicates that speed environment and spatial context jointly influence crash severity. These interaction patterns justify the use of flexible models such as decision trees, random forests, and boosting methods.
+
+### 3.3.4 High-risk-scenarios-table
+```{r high-risk-scenarios-table}
+risk_table <- df_merged %>%
+  filter(
+    !is.na(`Speed limit`),
+    !is.na(`Natural lighting`),
+    !is.na(Urbanisation),
+    !is.na(`Degree of crash`)
+  ) %>%
+  group_by(`Speed limit`, `Natural lighting`, Urbanisation) %>%
+  summarise(
+    total_crashes = n(),
+    fatal_prop = mean(`Degree of crash` == "Fatal"),
+    injury_prop = mean(`Degree of crash` == "Injury"),
+    non_casualty_prop = mean(`Degree of crash` == "Non-casualty"),
+    .groups = "drop"
+  ) %>%
+  filter(total_crashes >= 200) %>%   # keep only meaningful groups
+  arrange(desc(fatal_prop), desc(total_crashes)) %>%   # sort by fatal proportion descending
+  slice_head(n = 10) %>%
+  mutate(
+    fatal_prop = scales::percent(fatal_prop, accuracy = 0.1),
+    injury_prop = scales::percent(injury_prop, accuracy = 0.1),
+    non_casualty_prop = scales::percent(non_casualty_prop, accuracy = 0.1)
+  ) %>%
+  rename(
+    `Speed Limit` = `Speed limit`,
+    `Natural Lighting` = `Natural lighting`,
+    `Total Crashes` = total_crashes,
+    `Fatal Proportion` = fatal_prop,
+    `Injury Proportion` = injury_prop,
+    `Non-casualty Proportion` = non_casualty_prop
+  )
+
+knitr::kable(
+  risk_table,
+  caption = "Table: High-risk crash scenarios ranked by fatal crash proportion"
+)
+```
+The table highlights combinations of environmental and contextual conditions associated with relatively high fatal proportions. Rather than relying on a single variable in isolation, these results suggest that crash severity is shaped by combinations of speed environment, lighting conditions, and urban context. This motivates the inclusion of interaction-capable models in the modelling phase.
+
+### 3.3.5 Top 10 LGA by crash count
+```{r top-lga}
+top_lga <- df_merged %>%
+  filter(!is.na(LGA)) %>%
+  count(LGA, sort = TRUE) %>%
+  slice_head(n = 10)
+
+ggplot(top_lga, aes(x = reorder(LGA, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Top 10 LGAs by Crash Count",
+    x = "LGA",
+    y = "Number of Crashes"
+  ) +
+  theme_minimal()
+```
+Crash counts are unevenly distributed across LGAs, indicating spatial heterogeneity in crash occurrence. This suggests that location-related variables such as LGA and urbanisation may add predictive value, although high-cardinality location variables may require grouping or regularisation during preprocessing.
+
+### 3.3.6 Fatal-rate-tu-type
+```{r fatal-rate-tu-type}
+tu_fatal <- df_merged %>%
+  filter(!is.na(`TU type group`), !is.na(`Degree of crash`)) %>%
+  group_by(`TU type group`) %>%
+  summarise(
+    total = n(),
+    fatal_rate = mean(`Degree of crash` == "Fatal"),
+    .groups = "drop"
+  ) %>%
+  filter(total >= 100) %>%
+  arrange(desc(fatal_rate))
+
+ggplot(tu_fatal, aes(x = reorder(`TU type group`, fatal_rate), y = fatal_rate)) +
+  geom_col(fill = "tomato") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 0.1)) +
+  labs(
+    title = "Fatal Crash Proportion by Traffic Unit Type",
+    x = "Traffic Unit Type",
+    y = "Fatal Proportion"
+  ) +
+  theme_minimal()
+```
+Fatal crash proportions vary noticeably across traffic unit types, suggesting that not all road users face the same severity risk. This reinforces the importance of traffic-unit-level features in the integrated dataset and supports the decision to retain traffic-unit characteristics for modelling.
+
 
 # 4.Project Planning
 ## 4.1 Preprocessing Plan for handling your dataset’s specific requirements to make it clean and ready for modelling.
