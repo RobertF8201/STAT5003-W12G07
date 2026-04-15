@@ -798,6 +798,24 @@ final report.
 Final refinements will be made to ensure clarity and consistency of the report. 
 Team contributions will be reviewed and documented.
 
+**Backup Plan**
+
+The team acknowledges that unforeseen circumstances such as illness, personal 
+emergencies, or other commitments may arise during the project period. 
+With this in mind, the following contingency measures have been put in place. 
+The workload of members has been structured so that 2 members are on standby at 
+any given time, ready to take over tasks if a team member is unable to meet a 
+deadline. The remaining members will provide 2 check-ins per week to monitor 
+task progress and flag any delays early. If a task is not completed by its 
+deadline, it will be immediately handed over to a standby member to minimise 
+disruption to the overall timeline. All work will be stored in a shared 
+github repository accessible to all team members to ensure continuity.
+
+The team will hold 2 meetings per week during project periods. One every Thursday 
+in-person after the workshop, and one every Monday via Zoom to track progress, 
+update team members, and provide support. Each member is expected to contribute 
+approximately 20% to the overall project across both phases.
+
 # References
 
 Chawla, N. V., Bowyer, K. W., Hall, L. O., & Kegelmeyer, W. P. (2002). SMOTE: 
@@ -816,7 +834,7 @@ Government Open Data Platform. https://www.data.gov.au/data/dataset/nsw-2-nsw-cr
 Transport for NSW. (2025). NSW road safety progress report 2024. Centre for 
 Road Safety. https://www.transport.nsw.gov.au/system/files/media/documents/2025/crs_road_safety_progress_report
 
-# AI Use Statment
+# Acknowledgement of AI
 
 Group 07 (Workshop 12) declares that all ideas, analysis, and written content 
 presented in this report are our own. We did not use generative AI to write our 
