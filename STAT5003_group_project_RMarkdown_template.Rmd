@@ -2,9 +2,10 @@
 title: "NSW Road Crash Severity Prediction: Project Plan and EDA"
 author: "Group 7, Workshop 12"
 output:
+  pdf_document: 
+    latex_engine: xelatex
   html_document:
     code_folding: hide
-  pdf_document: default
 ---
 # Introduction
 
