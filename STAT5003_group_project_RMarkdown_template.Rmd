@@ -17,24 +17,9 @@ library(scales)
 library(knitr)
 ```
 
-```{r read crash dataset, message=FALSE, warning=FALSE}
-df_crash <- read_xlsx("nsw_road_crash_data_2020-2024_crash.xlsx")
-str(df_crash)
-head(df_crash)
-```
 
-```{r read traffic unit, message=FALSE, warning=FALSE}
-df_unit <- read_xlsx("nsw_road_crash_data_2020-2024_traffic_unit.xlsx")
-str(df_unit)
-head(df_unit)
-```
-
-
-```{r merge & save, message=FALSE, warning=FALSE}
-df_merged <- left_join(df_crash, df_unit, by = "Crash ID")
-str(df_merged)
-head(df_merged)
-write.csv(df_merged, "nsw_road_crash_merged_2020_2024.csv", row.names = FALSE)
+```{r read merged dataset, message=FALSE, warning=FALSE}
+df_merged <- read.csv("nsw_road_crash_merged_2020_2024.csv", check.names = FALSE)
 ```
 
 # 1 Framing & Dataset Selection
