@@ -109,6 +109,20 @@ b3 <- ggplot(df_merged, aes(x = fct_infreq(factor(Urbanisation)), fill = `Degree
 gridExtra::grid.arrange(b1, b2, b3, nrow = 1)
 ```
 
+```{r fig.height=2.5, fig.width=10}
+b4 <- ggplot(df_merged, aes(x = fct_infreq(`TU type group`), fill = `Degree of crash`)) +
+  geom_bar(position = "fill") +
+  labs(title = "Severity by TU Type", y = "Proportion", x = NULL) +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1),
+                          legend.position = "none")
+
+b5 <- ggplot(df_merged, aes(x = `TU controlled flag`, fill = `Degree of crash`)) +
+  geom_bar(position = "fill") +
+  labs(title = "Severity by TU Controlled Flag", y = "Proportion", x = NULL) +
+  theme_minimal() + theme(legend.key.size = unit(0.3, "cm"))
+
+gridExtra::grid.arrange(b4, b5, nrow = 1)
+```
 Speed limit shows the strongest relationship with crash severity — higher speed zones (100–110 km/h) have noticeably greater Fatal proportions. Pedestrians and motorcycles show elevated Injury proportions, while uncontrolled traffic units have higher Non-casualty proportions. Country non-urban areas show slightly higher Fatal proportions, consistent with higher rural speed limits.
 
 ## 3.3 Feature Interactions & High-Risk Scenarios
