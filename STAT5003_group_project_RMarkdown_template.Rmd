@@ -704,21 +704,25 @@ All models will be implemented in R using the `caret` package for a unified trai
 ## 4.3 Evaluation Plan: propose and justify performance metrics for final model 
 evaluation.
 
-Standard accuracy is an inadequate evaluation metric for this problem due to severe class imbalance. A classifier predicting *Injury* for every observation would achieve high accuracy while completely failing to identify any *Fatal* crash. The metrics below are selected to reflect both overall classifier performance and the disproportionate importance of correctly identifying fatal outcomes.
+Standard accuracy is an inadequate evaluation metric for this problem due to the class imbalance in Degree of Crash. At the vehicle level, Fatal observations account for only 1.4% of the 170,962 records, with Injury at 66.9% and Non-casualty at 31.7%. A classifier that predicts Injury for every observation would achieve high accuracy simply because Injury is the most frequent class, while completely failing to identify any Fatal crash. The metrics below are selected to reflect both overall classifier performance and the disproportionate importance of correctly identifying fatal outcomes.
 
-### Performance Metrics
+###Primary Metric: Macro-Averaged F1 Score
+The macro-averaged F1 score computes the F1 score (harmonic mean of precision and recall) for each of the three classes independently — Fatal, Injury, and Non-casualty — and then averages them with equal weight, regardless of class frequency. This ensures that performance on the rare Fatal class receives the same weight as the dominant Injury class, directly penalising models that achieve high overall accuracy by ignoring fatal crashes. Macro F1 is the primary metric for ranking and selecting the final model.
 
-- **Macro-Averaged F1 Score (Primary):** Computes the F1 score for each of the three classes independently and then averages them with equal weight. This ensures that performance on the rare *Fatal* class receives the same weight as the dominant *Injury* class. This will be our primary metric for ranking models.
-- **Fatal Class Recall (Primary Constraint):** Measures the proportion of actual *Fatal* crashes correctly identified. A model with high Macro F1 but low Fatal recall will be deprioritised, as failing to flag potentially fatal conditions is the most consequential error.
-- **Weighted F1 Score (Secondary):** Averages F1 per class weighted by each class's support. It provides a realistic picture of overall performance on the true class distribution.
-- **Cohen's Kappa ($\kappa$) (Secondary):** Adjusts accuracy for the agreement expected by chance. Computed directly by `caret::confusionMatrix()`, providing a clear sanity check (values near 0 indicate performance no better than random guessing).
-- **Confusion Matrix:** Evaluated via `caret::confusionMatrix()` and visualised as a heatmap using `ggplot2` to explicitly monitor misclassification directions (e.g., dangerous errors where Fatal crashes are predicted as Injury).
+###Primary Constraint: Fatal Class Recall
+Given the real-world stakes of missing a fatal crash, recall for the Fatal class is reported separately as a hard constraint alongside macro F1. Recall measures the proportion of actual Fatal crashes that the model correctly identifies. A model with high macro F1 but low Fatal recall will be deprioritised in model selection, as failing to flag potentially fatal road conditions is the most consequential error in this problem context.
 
-### Validation Strategy
+###Secondary Metric: Weighted F1 Score
+The weighted F1 score averages F1 per class weighted by each class's support (number of observations). This provides a realistic picture of overall classifier performance on the true class distribution and complements macro F1 by quantifying the trade-off between performance on rare versus frequent classes.
 
-- **Cross-Validation:** Stratified 5-fold cross-validation will be applied to the training data using `caret::trainControl(method = "cv", number = 5, classProbs = TRUE, savePredictions = TRUE)`. This ensures class proportions are preserved across all folds.
-- **Temporal Split:** We will use a time-based holdout strategy: **2020–2023 data for training/CV** and **2024 data as the held-out test set**. This reflects real-world deployment conditions where historical data predicts future crashes.
-- **Unbiased Estimation:** The final held-out test set (2024) will be evaluated *once only* after model selection and tuning are complete to obtain an unbiased estimate of generalisation performance.
+###Secondary Metric: Cohen's Kappa (κ)
+Cohen's Kappa adjusts accuracy for the agreement expected by chance, given the class distribution. In an imbalanced three-class problem, even a naive classifier that always predicts the most frequent class has a non-trivial chance of being correct. Kappa values near 0 indicate performance no better than random guessing. Kappa is computed directly by caret's confusionMatrix() function and provides a clear sanity check on all models.
+
+###Secondary Metric: Confusion Matrix
+A confusion matrix will be produced for each model using caret's confusionMatrix() function and visualised as a heatmap using ggplot2. The 3×3 matrix reveals which severity classes are most frequently misclassified and in which direction — for example, whether Fatal crashes are being predicted as Injury, which is the most dangerous type of error in this context.
+
+###Validation Strategy
+Cross-validation folds are constructed at the crash level (grouped by Crash ID) to prevent data leakage from multiple vehicles belonging to the same crash appearing in both training and validation folds. Stratified grouped 5-fold cross-validation will be applied to the training data using caret's groupKFold() with Crash ID as the grouping variable, preserving class proportions across folds. A temporal split will be used: 2020–2023 data for training and 2024 data as the held-out test set, reflecting real-world deployment conditions where the model is used to predict future crashes. The final held-out test set is evaluated once only, after model selection is complete via cross-validation, to obtain unbiased estimates of generalisation performance.
 
 ## 4.4 Timeline and Project Milestones
 
