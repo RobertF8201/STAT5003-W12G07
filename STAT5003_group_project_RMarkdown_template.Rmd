@@ -84,8 +84,7 @@ vehicle types, and injury outcomes (Transport for NSW, 2024).
 
 For this study, we utilized the Crash Dataset (NSW Road Crash Data - 2020-2024 
 - CRASH.xlsx) and Traffic Unit Dataset (NSW Road Crash Data - 2020-2024 
-- TRAFFIC UNIT.xlsx ) for 2020-2024.The crash dataset contains environmental and 
-road- related variables (e.g. weather, road surface, and speed limit ) 
+- TRAFFIC UNIT.xlsx ) for 2020-2024. The crash dataset contains environmental and road-related variables (e.g. weather, road surface, and speed limit).
 
 - The crash dataset contains: 
   - Crash Details (No. Killed, No. Seriously Injured, Severity of Crash) 
@@ -112,7 +111,7 @@ merging both of these on Crash ID contains 170,962 records. The merged dataset
 is recorded at a vehicle level. This allows vehicle-specific characteristics to 
 be incorporated into the crash severity increasing the richness of our dataset.
 
-```{r na visualisation}
+```{r na visualisation, fig.width=7, fig.height=3}
 na_counts <- colSums(is.na(df_merged))
 na_df <- data.frame(
   variable = names(na_counts),
@@ -128,55 +127,18 @@ ggplot(na_df, aes(x = reorder(variable, -missing), y = missing)) +
 
 ## 2.3 Dataset Justification
 
-The dataset meets several key requirements outlined in the assignment.
+The dataset meets the four key requirements outlined in the assignment:
 
-**Large Dataset(>10,000 observations)**
-
-The merged dataset has 170,962 records, providing sufficient scale for robust 
-statistical analysis and model training. The large size enables reliable 
-estimation of relationships between our target variable (crash severity) and its 
-predictors while also supporting validation techniques such as test-train split.
-
-**Integrated Dataset (Multiple sources combined)**
-
-The dataset is formed by merging crash-level and traffic unit datasets using a 
-common Crash ID. This integration combines environmental, spatial, and vehicle-
-level information. The process improves the richness of features available for 
-analysis and enables more comprehensive modelling of crash severity.
-
-**Messy Dataset (Real-world data challenge)**
-
-As a real-world administrative dataset, it contains missing values and potential 
-inconsistencies across variables such as weather, lighting, and vehicle 
-characteristics. Additionally, the process of merging the crash dataset (92,189 
-records) with traffic unit dataset (170,962 records) exposes existing missing
-values, as not all variables are available at both the crash and vehicle levels. 
-When merged using Crash ID, crash-level attributes are duplicated across 
-multiple vehicle records, while some vehicle-specific fields may not have 
-corresponding values for all observations.
-
-This results in a dataset with increased sparsity and inconsistencies across 
-columns, requiring preprocessing steps such as handling missing data, managing 
-duplicated information, and cleaning categorical variables. As shown in the 
-above figure, columns such as Primary hazardous feature, Primary temporary 
-feature, and object hit 2 have the highest missingness(>95%) while Route no. and 
-Other TU type have moderate missingness
-
-**Multi-class Classification Problem**
-
-The target variable, crash severity, is a multi-class outcome derived from 
-Degree of crash column in the crash dataset, consisting of  categories such as 
-Fatal, Injury, and Non-casualty. These categories are supported by injury-related 
-variables in the crash dataset (e.g., number killed and 
-number seriously injured). This introduces challenges such as class imbalance, 
-which must be considered when evaluating model performance.
+| Requirement | How it is met |
+|-------------|---------------|
+| **Large (>10,000 obs.)** | The merged dataset has 170,962 records, providing sufficient scale for robust statistical analysis, reliable estimation of predictor–severity relationships, and support for train/test validation. |
+| **Integrated (multiple sources)** | Formed by merging crash-level and traffic unit datasets via `Crash ID`, combining environmental, spatial, and vehicle-level information to enable more comprehensive modelling. |
+| **Messy (real-world challenges)** | Contains missing values and inconsistencies across weather, lighting, and vehicle variables. Merging introduces sparsity: crash-level attributes are duplicated across vehicle records while some vehicle fields lack values. High-missingness columns (Primary hazardous feature >95%, Primary temporary feature >98%) require dropping; moderate-missingness columns (Route no., Other TU type) require imputation strategies. |
+| **Multi-class classification** | The target `Degree of crash` has three classes — Fatal, Injury, and Non-casualty — with significant class imbalance (Fatal: ~1.4%), requiring imbalance-aware modelling and evaluation. |
 
 **2.4 Summary**
 
-Overall, the dataset is well-suited for this study as it is large, integrated, 
-messy, and supports a multi-classification problem. Its combination of 
-environmental, temporal, spatial, and vehicle-level features provides a strong 
-foundation for modelling and predicting crash severity.
+Overall, the dataset is well-suited for this study as it is large, integrated, messy, and supports a multi-class classification problem. Its combination of environmental, temporal, spatial, and vehicle-level features provides a strong foundation for modelling and predicting crash severity.
 
 # 3 Exploratory Data Analysis (EDA)
 ## 3.1 Univariate Analysis
@@ -266,7 +228,7 @@ Core modelling variables (Weather, Speed limit, Natural lighting, Degree of cras
 summary(df_merged$`No. of traffic units involved`)
 ```
 
-```{r}
+```{r boxplot-tu, fig.width=4, fig.height=3}
 ggplot(df_merged, aes(y = `No. of traffic units involved`)) +
   geom_boxplot(fill = "steelblue", outlier.colour = "red", outlier.size = 1) +
   scale_y_log10() +
@@ -386,10 +348,10 @@ df_merged %>%
 
 Fine weather strongly aligns with dry surfaces while rain almost exclusively pairs with wet conditions, confirming dataset consistency. Speed limits of 50-60 km/h dominate Sydney metro areas while 100-110 km/h zones concentrate in Country non-urban regions. Crashes predominantly occur in daylight across all urbanisation categories, with Sydney metro having the highest overall crash volume.
 
-## 3.3 Data Visualisation: Additional Graphs/Tables with Insights
+## 3.3 Additional Visualisations
 To further support the exploratory analysis, additional visualizations and summary tables were produced to reveal temporal, spatial, and contextual patterns in crash severity. These displays go beyond simple univariate and bivariate summaries by highlighting high-risk combinations of conditions and identifying patterns that may influence feature selection and model choice.
 
-### 3.3.1 Heatmap-day-time
+### 3.3.1 Crash Frequency by Day & Time
 ```{r eda-helpers, message=FALSE, warning=FALSE}
 library(knitr)
 
@@ -405,7 +367,7 @@ df_merged$`Two-hour intervals` <- factor(df_merged$`Two-hour intervals`,
 df_merged$`Reporting year` <- factor(df_merged$`Reporting year`,
                                      levels = sort(unique(df_merged$`Reporting year`)))
 ```
-```{r heatmap-day-time}
+```{r heatmap-day-time, fig.width=8, fig.height=3.5}
 df_merged %>%
   group_by(`Day of week of crash`, `Two-hour intervals`) %>%
   summarise(count = n(), .groups = "drop") %>%
@@ -421,10 +383,10 @@ df_merged %>%
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-The heatmap shows that crash frequency is concentrated in specific time periods rather than being evenly distributed across the week. In particular, daytime and peak commuting periods tend to have the highest crash counts, suggesting that traffic exposure and congestion may play a major role in crash occurrence. This pattern indicates that time-related variables are likely to be useful predictors in the classification task.
+Crash frequency peaks during daytime and commuting hours, suggesting traffic exposure drives occurrence more than day of week alone. Time-related variables are likely to be useful predictors.
 
-### 3.3.2 Severity-by-year
-```{r severity-by-year}
+### 3.3.2 Crash Severity by Year
+```{r severity-by-year, fig.width=5, fig.height=3}
 df_merged %>%
   group_by(`Reporting year`, `Degree of crash`) %>%
   summarise(count = n(), .groups = "drop") %>%
@@ -439,10 +401,10 @@ df_merged %>%
   ) +
   theme_minimal()
 ```
-The proportional distribution of crash severity appears relatively stable across reporting years, with Injury crashes consistently dominating the dataset and Fatal crashes remaining the minority class. This suggests that class imbalance is a persistent characteristic of the data rather than a one-off issue in a single year, reinforcing the need for imbalance-aware modelling and evaluation.
+Severity proportions are stable across years, confirming that class imbalance is a persistent structural feature of the dataset rather than an anomaly, reinforcing the need for imbalance-aware modelling.
 
-### 3.3.3 Fatal-rate-speed-urban
-```{r fatal-rate-speed-urban}
+### 3.3.3 Fatal Rate by Speed & Urbanisation
+```{r fatal-rate-speed-urban, fig.width=6, fig.height=4}
 fatal_heatmap <- df_merged %>%
   filter(!is.na(`Speed limit`), !is.na(Urbanisation), !is.na(`Degree of crash`)) %>%
   group_by(`Speed limit`, Urbanisation) %>%
@@ -466,7 +428,7 @@ ggplot(fatal_heatmap, aes(x = Urbanisation, y = `Speed limit`, fill = fatal_rate
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-The heatmap suggests that the proportion of Fatal crashes is higher in high-speed areas, especially in less urbanised regions. This supports the earlier bivariate findings and indicates that speed environment and spatial context jointly influence crash severity. These interaction patterns justify the use of flexible models such as decision trees, random forests, and boosting methods.
+Fatal crash proportions are highest in high-speed, less-urbanised zones, confirming that speed environment and spatial context jointly influence severity and motivating the use of interaction-capable models.
 
 ### 3.3.4 High-Risk Crash Scenarios
 ```{r high-risk-scenarios-table}
@@ -507,10 +469,10 @@ knitr::kable(
   caption = "Table: High-risk crash scenarios ranked by fatal crash proportion"
 )
 ```
-The table highlights combinations of environmental and contextual conditions associated with relatively high fatal proportions. Rather than relying on a single variable in isolation, these results suggest that crash severity is shaped by combinations of speed environment, lighting conditions, and urban context. This motivates the inclusion of interaction-capable models in the modelling phase.
+High fatal proportions cluster around combinations of high speed limits, darkness, and rural contexts, confirming that crash severity is shaped by interacting conditions rather than any single variable.
 
-### 3.3.5 Top 10 LGA by crash count
-```{r top-lga}
+### 3.3.5 Top 10 LGAs & Fatal Rate by Traffic Unit Type
+```{r lga-tu-pair, out.width='50%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
 top_lga <- df_merged %>%
   filter(!is.na(LGA)) %>%
   count(LGA, sort = TRUE) %>%
@@ -519,25 +481,13 @@ top_lga <- df_merged %>%
 ggplot(top_lga, aes(x = reorder(LGA, n), y = n)) +
   geom_col(fill = "steelblue") +
   coord_flip() +
-  labs(
-    title = "Top 10 LGAs by Crash Count",
-    x = "LGA",
-    y = "Number of Crashes"
-  ) +
+  labs(title = "Top 10 LGAs by Crash Count", x = "LGA", y = "Number of Crashes") +
   theme_minimal()
-```
-Crash counts are unevenly distributed across LGAs, indicating spatial heterogeneity in crash occurrence. This suggests that location-related variables such as LGA and urbanisation may add predictive value, although high-cardinality location variables may require grouping or regularisation during preprocessing.
 
-### 3.3.6 Fatal-rate-tu-type
-```{r fatal-rate-tu-type}
 tu_fatal <- df_merged %>%
   filter(!is.na(`TU type group`), !is.na(`Degree of crash`)) %>%
   group_by(`TU type group`) %>%
-  summarise(
-    total = n(),
-    fatal_rate = mean(`Degree of crash` == "Fatal"),
-    .groups = "drop"
-  ) %>%
+  summarise(total = n(), fatal_rate = mean(`Degree of crash` == "Fatal"), .groups = "drop") %>%
   filter(total >= 100) %>%
   arrange(desc(fatal_rate))
 
@@ -545,138 +495,55 @@ ggplot(tu_fatal, aes(x = reorder(`TU type group`, fatal_rate), y = fatal_rate)) 
   geom_col(fill = "tomato") +
   coord_flip() +
   scale_y_continuous(labels = scales::percent_format(accuracy = 0.1)) +
-  labs(
-    title = "Fatal Crash Proportion by Traffic Unit Type",
-    x = "Traffic Unit Type",
-    y = "Fatal Proportion"
-  ) +
+  labs(title = "Fatal Crash Proportion by Traffic Unit Type",
+       x = "Traffic Unit Type", y = "Fatal Proportion") +
   theme_minimal()
 ```
-Fatal crash proportions vary noticeably across traffic unit types, suggesting that not all road users face the same severity risk. This reinforces the importance of traffic-unit-level features in the integrated dataset and supports the decision to retain traffic-unit characteristics for modelling.
+Crash counts are spatially concentrated in a few LGAs, and fatal proportions vary substantially across traffic unit types — both reinforcing the predictive value of location and vehicle-level features.
 
 
 # 4 Project Planning
-## 4.1 Preprocessing Plan for handling your dataset’s specific requirements to make it clean and ready for modelling.
+## 4.1 Preprocessing Plan
 
 To transform the raw NSW Road Crash Data into a clean, model-ready dataset, we propose the following preprocessing pipeline. All data-dependent steps (imputation, encoding, scaling, resampling) will be performed **within cross-validation folds** to prevent data leakage (James et al., 2021).
 
-### Step 1: Data Integration
+| Step | Action | Key Details |
+|------|--------|-------------|
+| 1. Data Integration | Aggregate TU → crash level; left-join on `Crash ID` | Binary TU flags (`has_heavy_vehicle`, `has_motorcycle`, etc.); TU type count |
+| 2. Feature Removal | Drop leakage, identifiers, redundant & sparse columns | Remove `No. killed`, injury counts (leakage); `Street`, `Route no.` (redundant); columns >85% NA |
+| 3. Missing Values | Targeted imputation per variable | High-NA cols → binary flags; `Other TU type` → `"Single vehicle"`; categoricals → `"Unknown"`; numeric → median |
+| 4. Feature Engineering | Derive binary & grouped features | `is_weekend`, `is_rush_hour`, `is_night`, `is_wet`; speed bands (≤50, 60–80, 90–100, 110+) |
+| 5. Outlier Detection | Remove geospatial & distance outliers | Drop outside NSW bounds; winsorise `Distance` at 99th percentile |
+| 6. Encoding | Model-dependent categorical encoding | Trees: R `factor`; kNN/SVM/LR: one-hot/ordinal; pool rare `LGA` (<1%) into `"Other"` |
+| 7. Scaling | Standardise numerics for distance-based models | Z-score within fold for kNN, SVM; trees scale-invariant — no scaling needed |
+| 8. Class Imbalance | Resample within training fold only | SMOTE for Fatal minority class; compare with down-sampling during tuning (Chawla et al., 2002) |
+| 9. Train/Test Split | 80/20 stratified split; nested 5-fold CV | All steps in `tidymodels::recipe`; transformations fitted on training data only per fold |
 
-The dataset consists of two linked tables — **CRASH** (92,189 rows × 50 columns) and **TRAFFIC UNIT** (170,962 rows × 10 columns) — connected via `Crash ID`. Since this is a one-to-many relationship, we will **aggregate** the TRAFFIC UNIT table to crash level before joining:
-
--   Binary flags for vehicle type presence: `has_heavy_vehicle`, `has_motorcycle`, `has_pedestrian`, `has_bicycle`
--   Count of distinct TU types per crash
--   Binary flag for whether any object was hit
-
-The aggregated table will be **left-joined** to CRASH on `Crash ID`, producing a single analysis-ready table.
-
-### Step 2: Feature Selection & Removal
-
-| Category | Columns | Reason |
-|----|----|----|
-| Identifiers | `Crash ID` | Not predictive |
-| Target leakage | `Degree of crash - detailed`, `No. killed`, `No. seriously injured`, `No. moderately injured`, `No. minor-other injured` | Direct consequences of severity — would leak the target |
-| Redundant location | `Street of crash`, `Identifying feature`, `Town`, `Route no.`, `Street type`, `Direction` | High cardinality; location already captured by `LGA`, `Lat/Lon`, `Urbanisation` |
-| Near-zero variance | `Primary temporary feature` (98.5% NA), `Primary hazardous feature` (98.0% NA), `DCA supplement` (86.8% NA) | Too sparse to be informative |
-
-Retained features cover **environmental conditions** (weather, lighting, road surface, speed limit), **road characteristics** (alignment, type of location), **temporal patterns** (month, day of week, time interval), **spatial context** (urbanisation, LGA), and **traffic unit characteristics** (aggregated from TU table).
-
-### Step 3: Missing Value Handling
-
-| Variable | Missing % | Strategy |
-|----|----|----|
-| `Primary permanent feature` | 73.0% | Convert to binary indicator `has_permanent_feature`; drop original |
-| `Other TU type` | 30.4% | Recode `NA` → `"Single vehicle"` (missing implies single-vehicle crash) |
-| Remaining categorical | \<1% | Treat `NA` as an explicit `"Unknown"` level |
-| Remaining numeric | \<1% | Median imputation (within training fold) |
-
-For categorical variables, treating missing as its own category is justified when the missingness pattern itself is informative (Little, 1988). We will verify this using `naniar::mcar_test()` and visualise with `visdat::vis_miss()`.
-
-### Step 4: Feature Engineering
-
-Derived features to enhance predictive power:
-
--   **Temporal**: `is_weekend` (Sat/Sun), `is_rush_hour` (7–9am / 4–6pm)
--   **Environmental**: `is_night` (Darkness/Twilight), `is_wet` (non-Dry surface)
--   **Speed bands**: Group `Speed limit` into `≤50`, `60–80`, `90–100`, `110+`, `Other`
--   **Multi-vehicle**: Binary flag from `No. of traffic units involved > 1`
-
-### Step 5: Outlier Detection
-
--   **Latitude/Longitude**: Remove records outside NSW bounds (lat: −37.5 to −28.0, lon: 140.0 to 154.0)
--   **Distance**: Inspect for extreme values; winsorise at the 99th percentile if needed
-
-### Step 6: Encoding Categorical Variables
-
-Encoding strategy is model-dependent:
-
--   **Tree-based models** (Random Forest, XGBoost): Use R `factor` type directly — no encoding needed
--   **Distance/linear models** (kNN, SVM, Logistic Regression, LDA): One-hot encoding for nominal variables; ordinal encoding for ordered variables (e.g., speed bands)
--   **High-cardinality**: Pool `LGA` levels with \<1% of observations into `"Other"` to reduce dimensionality
-
-### Step 7: Feature Scaling
-
--   **kNN and SVM** are distance-based and sensitive to feature scale → apply **z-score standardisation** to all numeric features within each training fold
--   **Tree-based models** are scale-invariant → no scaling needed
-
-### Step 8: Class Imbalance Handling
-
-The target `Degree of crash` is highly imbalanced (Fatal: 1.5%, Injury: 66.4%, Non-casualty: 32.1%). Resampling will be applied **within the training fold only** to prevent leakage (Chawla et al., 2002):
-
-1.  **SMOTE** (`themis::step_smote`): Synthesise minority-class samples, especially for Fatal
-2.  **Down-sampling**: Undersample the majority class as a simpler alternative
-3.  Both strategies will be compared during model tuning to select the best approach
-
-### Step 9: Train/Test Split & Cross-Validation
-
--   **Holdout**: 80/20 stratified split by `Degree of crash`
--   **Nested CV**: Outer 5-fold for generalisation error; inner 5-fold for hyperparameter tuning
--   All preprocessing steps will be embedded in a `tidymodels::recipe` pipeline so that transformations are fitted on training data only within each fold
-
-### Pipeline Summary
-
-```         
-Raw Data (CRASH + TRAFFIC UNIT)
-  │
-  ├─ 1. Aggregate TRAFFIC UNIT → crash-level features
-  ├─ 2. Left join on Crash ID
-  ├─ 3. Remove identifiers, leakage vars, near-zero-variance cols
-  ├─ 4. Feature engineering (binary flags, speed bands, temporal)
-  ├─ 5. Outlier removal (geospatial bounds)
-  ├─ 6. Train/Test split (80/20, stratified)
-  │
-  └─ Within each CV fold (training only):
-       ├─ 7. Missing value handling
-       ├─ 8. Categorical encoding (one-hot / factor)
-       ├─ 9. Feature scaling (for kNN/SVM/LR)
-       └─ 10. SMOTE / down-sampling for class imbalance
-```
-
-## 4.2 Model Plan: based on EDA, propose at least 5 classification models suited to the data/problem with justification.
+## 4.2 Model Plan: Proposed Classification Models
 
 Based on the findings from EDA, we propose six classification models to predict **Degree of Crash** (a three-class outcome: Fatal, Injury, and Non-casualty). The EDA revealed that the target variable is extremely imbalanced—Fatal crashes account for a small proportion of the 92,189 observations—and that all predictor variables are categorical (e.g., `Weather`, `Natural lighting`, `Surface condition`, `Speed limit`, `Urbanisation`, `TU type group`). These characteristics directly inform the choice of models below. All models will be implemented in R using the `caret` package for a unified training and cross-validation interface.
 
 | # | Model | Justification | Implementation |
 |---|-------|---------------|----------------|
-| 1 | Multinomial Logistic Regression (Baseline) | Proposed as our interpretable baseline model. Produces interpretable coefficients (log-odds) for each predictor category, meaningful for road safety stakeholders (e.g., quantifying how much driving at night increases the log-odds of a fatal crash relative to daylight). All subsequent models will be benchmarked against this baseline. | `multinom()` from the `nnet` package with dummy-encoded predictors; `class_weight` argument to account for class imbalance. |
-| 2 | Decision Tree (CART) | Chosen for its full interpretability and ability to capture non-linear interactions between categorical features (e.g., the joint rule "high speed limit AND rural area → higher fatal risk" in a single branch). | `rpart` package; tree depth tuned via cross-validation to prevent overfitting; visualised using `rpart.plot` to communicate high-risk conditions to non-technical audiences. |
-| 3 | Random Forest | Extends the decision tree by training an ensemble of trees on bootstrap samples, significantly reducing variance. Provides variable importance scores to identify which predictors most strongly impact crash severity. | `randomForest` package; class imbalance handled via the `classwt` argument. Computationally feasible with >90k observations. |
-| 4 | Gradient Boosting Machine (XGBoost) | Proposed as our primary high-performance model. By sequentially correcting misclassifications from prior trees, it is particularly effective at learning from the rare Fatal class by exploiting subtle, high-value signals in the features. | `xgboost` package; hyperparameters (`nrounds`, `max_depth`, `eta`) tuned via `caret::trainControl`; `scale_pos_weight` adjusted to address class imbalance. |
-| 5 | K-Nearest Neighbours (KNN) | Included as a non-parametric, instance-based comparison model to test whether crash severity is locally consistent in feature space (i.e., whether crashes occurring under similar conditions tend to share the same outcome). | `class` package; Gower distance metric (via `gower` package) for categorical features; optimal value of $k$ selected via cross-validation. |
-| 6 | Naive Bayes | A natural fit for datasets where all features are categorical. Serves as a strong probabilistic benchmark: if more complex models cannot substantially outperform it, this suggests that the individual feature distributions already carry most of the predictive information. | `e1071` package; extremely fast to train under the conditional independence assumption; provides probability estimates for each severity class. |
+| 1 | Multinomial Logistic Regression (Baseline) | Interpretable baseline; log-odds per predictor meaningful for stakeholders. All models benchmarked against this. | `multinom()` from `nnet`; dummy-encoded predictors; `class_weight` for imbalance. |
+| 2 | Decision Tree (CART) | Fully interpretable; captures interactions (e.g., high speed + rural → fatal) in a single branch. | `rpart`; depth tuned via CV; visualised with `rpart.plot`. |
+| 3 | Random Forest | Bootstrap ensemble reduces variance; variable importance scores rank predictors. | `randomForest`; `classwt` for imbalance; feasible at >90k obs. |
+| 4 | Gradient Boosting (XGBoost) | High-performance; sequential correction of misclassifications effective for rare Fatal class. | `xgboost`; `nrounds`, `max_depth`, `eta` tuned via `caret`; `scale_pos_weight` for imbalance. |
+| 5 | K-Nearest Neighbours (KNN) | Non-parametric; tests local consistency — do similar-condition crashes share severity? | `class` + Gower distance for categoricals; optimal $k$ via CV. |
+| 6 | Naive Bayes | Natural for all-categorical data; probabilistic benchmark for individual feature signal. | `e1071`; fast under conditional independence; outputs class probabilities. |
 
-## 4.3 Evaluation Plan: propose and justify performance metrics for final model evaluation.
+## 4.3 Evaluation Plan: Performance Metrics
 
 Standard accuracy is an inadequate evaluation metric for this problem due to the class imbalance in Degree of Crash. At the vehicle level, Fatal observations account for only 1.4% of the 170,962 records, with Injury at 66.9% and Non-casualty at 31.7%. A classifier that predicts Injury for every observation would achieve high accuracy simply because Injury is the most frequent class, while completely failing to identify any Fatal crash. The metrics below are selected to reflect both overall classifier performance and the disproportionate importance of correctly identifying fatal outcomes.
 
 | Metric | Role | Justification |
 |--------|------|---------------|
-| Macro-Averaged F1 Score | Primary Metric | Computes F1 (harmonic mean of precision and recall) for each class independently — Fatal, Injury, and Non-casualty — then averages them with equal weight, regardless of class frequency. Ensures performance on the rare Fatal class receives the same weight as the dominant Injury class, directly penalising models that ignore fatal crashes. Primary metric for ranking and selecting the final model. |
-| Fatal Class Recall | Primary Constraint | Given the real-world stakes of missing a fatal crash, recall for the Fatal class is reported separately as a hard constraint alongside macro F1. Recall measures the proportion of actual Fatal crashes the model correctly identifies. A model with high macro F1 but low Fatal recall will be deprioritised, as failing to flag potentially fatal road conditions is the most consequential error in this context. |
-| Weighted F1 Score | Secondary Metric | Averages F1 per class weighted by each class's support (number of observations). Provides a realistic picture of overall classifier performance on the true class distribution and complements macro F1 by quantifying the trade-off between performance on rare versus frequent classes. |
-| Cohen's Kappa (κ) | Secondary Metric | Adjusts accuracy for the agreement expected by chance, given the class distribution. In an imbalanced three-class problem, even a naive classifier always predicting the most frequent class has a non-trivial chance of being correct. Kappa values near 0 indicate performance no better than random guessing. Computed directly by `caret`'s `confusionMatrix()`. |
-| Confusion Matrix | Secondary Metric | A 3×3 matrix produced for each model using `caret`'s `confusionMatrix()` and visualised as a heatmap using `ggplot2`. Reveals which severity classes are most frequently misclassified and in which direction — e.g., whether Fatal crashes are being predicted as Injury, which is the most dangerous error type in this context. |
-| Cross-Validation Strategy | Validation | CV folds constructed at the crash level (grouped by Crash ID) to prevent leakage from multiple vehicles in the same crash appearing in both training and validation folds. Stratified grouped 5-fold CV applied via `caret`'s `groupKFold()`, preserving class proportions. Temporal split used: 2020–2023 for training, 2024 as held-out test set, reflecting real-world deployment conditions. Final test set evaluated once only, after model selection is complete via CV. |
+| Macro-Averaged F1 Score | Primary | Equal-weight F1 across all 3 classes; ensures Fatal class not ignored despite low frequency. Primary model selection metric. |
+| Fatal Class Recall | Primary Constraint | % of actual Fatal crashes correctly flagged; hard constraint — low recall deprioritises the model regardless of overall F1. |
+| Weighted F1 Score | Secondary | F1 weighted by class support; reflects real-world class distribution performance alongside macro F1. |
+| Cohen's Kappa (κ) | Secondary | Chance-adjusted accuracy; near-zero = no better than random. Via `caret`'s `confusionMatrix()`. |
+| Confusion Matrix | Secondary | 3×3 heatmap showing misclassification direction — e.g., Fatal predicted as Injury (most dangerous error). |
+| Cross-Validation Strategy | Validation | Grouped 5-fold CV by `Crash ID`; temporal split: 2020–2023 train, 2024 test; test set evaluated once only. |
 
 ## 4.4 Timeline and Project Milestones
 
@@ -684,22 +551,18 @@ The project timeline has been structured in alignment with the assignment deadli
 
 | Period | Milestone | Key Activities |
 |--------|-----------|----------------|
-| 1–7 April | Problem Framing & Data Acquisition | Evaluated datasets and selected the final dataset; finalised the research question. Sourced the Crash and Traffic Unit datasets (2020–2024) from the NSW Government open data platform. Conducted initial inspection of dataset structure, key variables, and differences. |
-| 7–10 April | Data Integration & Initial Data Preparation | Merged crash and traffic unit datasets using Crash ID, producing a unified dataset of 170,962 vehicle-level records. Examined missing values, identified inconsistencies introduced via merging, and understood variable types. Full preprocessing deferred to the modelling phase. |
-| 10–14 April | Exploratory Data Analysis (EDA) | Performed univariate and bivariate analyses on environmental factors (weather, lighting), temporal variables (time of day, day of week), and vehicle-level characteristics (vehicle type, manoeuvre). Insights used to inform feature selection and guide model planning. |
-| 14–17 April | Feature Planning & Model Design | Identified relevant features from EDA findings; planned transformations including categorical encoding and vehicle-level aggregation. Selected classification models for the next phase. |
-| 17–19 April | Plan & EDA Report Finalisation | Compiled all findings into a structured R Markdown report and submitted by the deadline. |
-| 6–10 May | Data Preprocessing & Baseline Modelling | Carry out preprocessing: handle missing values, encode categorical variables, and feature engineering. Implement and evaluate the baseline model (Multinomial Logistic Regression). |
-| 11–15 May | Advanced Model Development & Tuning | Implement and refine advanced models; tune hyperparameters via cross-validation to improve performance. |
-| 16–20 May | Model Evaluation & Report Writing | Evaluate models using appropriate performance metrics accounting for class imbalance. Select and justify the final model. Consolidate results, insights, and interpretations into the final report. |
-| 21–24 May | Report Refinement | Final refinements for clarity, consistency, and adherence to submission requirements. |
-| 25–31 May | Final Checks & Contribution Review | Review and document team contributions. Conduct a final check before submission. |
+| 1–7 April | Problem Framing & Data Acquisition | Sourced & selected dataset; finalised research question. |
+| 7–10 April | Data Integration & Initial Preparation | Merged datasets on Crash ID (170,962 records); examined missingness and variable types. |
+| 10–14 April | Exploratory Data Analysis (EDA) | Univariate & bivariate analyses done; insights used for feature selection. |
+| 14–17 April | Feature Planning & Model Design | Features identified from EDA; encoding plan and model list finalised. |
+| 17–19 April | Plan & EDA Report Finalisation | Report compiled and submitted. |
+| 6–10 May | Data Preprocessing & Baseline Modelling | Preprocessing pipeline implemented; Logistic Regression baseline trained and evaluated. |
+| 11–15 May | Advanced Model Development & Tuning | Remaining 5 models implemented and hyperparameter-tuned via CV. |
+| 16–20 May | Model Evaluation & Report Writing | Models evaluated; final model selected; results consolidated into report. |
+| 21–24 May | Report Refinement | Final edits for clarity and submission requirements. |
+| 25–31 May | Final Checks & Submission | Contributions reviewed; final check completed before submission. |
 
-**Backup Plan**
-
-The team acknowledges that unforeseen circumstances such as illness, personal emergencies, or other commitments may arise during the project period. With this in mind, the following contingency measures have been put in place. The workload of members has been structured so that 2 members are on standby at any given time, ready to take over tasks if a team member is unable to meet a deadline. The remaining members will provide 2 check-ins per week to monitor task progress and flag any delays early. If a task is not completed by its deadline, it will be immediately handed over to a standby member to minimise disruption to the overall timeline. All work will be stored in a shared GitHub repository accessible to all team members to ensure continuity.
-
-The team will hold 2 meetings per week during project periods. One every Thursday in-person after the workshop, and one every Monday via Zoom to track progress, update team members, and provide support. Each member is expected to contribute approximately 20% to the overall project across both phases.
+**Backup Plan:** The following contingency measures have been put in place. Two members are on standby at any time to cover tasks if a member is unable to meet a deadline; all work is stored in a shared GitHub repository. The team holds two meetings per week (Thursday in-person, Monday via Zoom) with 2 check-ins per week to monitor progress and flag delays early. Each member contributes approximately 20% across both phases.
 
 # References
 
