@@ -26,13 +26,17 @@ h4.date   { display: none; }
 ```
 
 
-```{r read merged dataset, message=FALSE, warning=FALSE}
+```{r read dataset, message=FALSE, warning=FALSE, results='hide'}
 df_crash <- read_xlsx("nsw_road_crash_data_2020-2024_crash.xlsx")
 df_unit <- read_xlsx("nsw_road_crash_data_2020-2024_traffic_unit.xlsx")
+str(df_crash)
+str(df_unit)
+```
+```{r read merged dataset, message=FALSE, warning=FALSE, results='hide'}
 df_merged <- left_join(df_crash, df_unit, by = "Crash ID")
 write.csv(df_merged, "nsw_road_crash_merged_2020_2024.csv", row.names = FALSE)
+str(df_merged)
 ```
-
 ### 1 Framing & Dataset Selection
 
 #### 1.1 Research Question
@@ -75,12 +79,12 @@ ggplot(na_df, aes(x = reorder(variable, -missing), y = missing)) +
 ```
 
 
-The dataset meets the four key requirements outlined in the assignment:
+**The dataset meets the four key requirements outlined in the assignment:**
 
 | Requirement | How it is met |
 |-------------|---------------|
 | **Large (>10,000 obs.)** | 170,962 merged records; sufficient for robust modelling and train/test validation. |
-| **Integrated (multiple sources)** | Crash and Traffic Unit tables merged via `Crash ID`; combines environmental, spatial, and vehicle-level features. |
+| **Integrated (multiple sources)** | Crash and Traffic Unit tables merged via `Crash ID`; has 59 variables combining environmental, spatial, and vehicle-level features. |
 | **Messy (real-world challenges)** | Missing values throughout; high-NA columns (>95%) dropped; moderate-NA columns require imputation; merging introduces sparsity. |
 | **Multi-class classification** | Target `Degree of crash`: Fatal, Injury, Non-casualty; heavily imbalanced (Fatal ~1.4%), requiring imbalance-aware modelling. |
 
@@ -449,7 +453,7 @@ Accuracy is not used as a primary metric, as it can be misleading in highly imba
 
 **Team & Backup:** Work is distributed so that at least three members contribute to each phase, with all member are responsible for at least one classification model. Two members are designated as standby per sprint to cover delays if needed. Progress is tracked through twice-weekly meetings (Monday on Zoom, Thursday in-person), supported by a shared GitHub repository for version control and task continuity.
 
-#### References
+### References
 
 Chawla, N. V., Bowyer, K. W., Hall, L. O., & Kegelmeyer, W. P. (2002). SMOTE: Synthetic minority over-sampling technique. *Journal of Artificial Intelligence Research*, *16*, 321–357. https://doi.org/10.1613/jair.953
 
@@ -459,7 +463,7 @@ Transport for NSW. (2024). *NSW road crash data 2020–2024* [Dataset]. Australi
 
 Transport for NSW. (2025). *NSW road safety progress report 2024*. Centre for Road Safety. https://www.transport.nsw.gov.au/system/files/media/documents/2025/crs_road_safety_progress_report_2024.pdf
 
-#### Acknowledgement of AI
+### Acknowledgement of AI
 
 Group 07 (Workshop 12) declares that all ideas, analysis, and written content 
 presented in this report are our own. We did not use generative AI to write our 
