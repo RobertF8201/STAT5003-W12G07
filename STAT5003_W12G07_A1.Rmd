@@ -172,7 +172,7 @@ ggplot(df_tu, aes(x = `TU group`)) +
 ```{r na check, results='hide'}
 colSums(is.na(df_merged))
 ```
-Core modelling variables (Weather, Speed limit, Natural lighting, Degree of crash) have no missing values. Primary hazardous feature (168,803), Primary temporary feature (168,406), and Object hit 2 (165,996) have very high missingness due to their conditional nature and will be dropped as no significant imputation is possible with missingness > 75%.
+Core modelling variables (Weather, Speed limit, Natural lighting, Degree of crash) have no missing values. Primary hazardous feature (168,803), Primary temporary feature (168,406), and Object hit 2 (165,996) have very high missingness due to their conditional nature and will be dropped as no significant imputation is possible with missingness > 50%.
 
 ##### 3.1.3 Outliers for Key Variables
 ```{r summary of TU group, results='hide'}
@@ -407,7 +407,7 @@ All data-dependent steps will be performed **within cross-validation folds** to 
 |------|--------|-------------|
 | 1. Data Integration | Aggregate TU → crash level; left-join on `Crash ID` | Binary TU flags (`has_heavy_vehicle`, `has_motorcycle`, etc.); TU type count |
 | 2. Feature Removal | Drop leakage, identifiers, redundant & sparse columns | Remove `No. killed`, injury counts (leakage); `Street`, `Route no.` (redundant); columns >75% NA |
-| 3. Missing Values | Targeted imputation per variable | Drop >85% NA; binary flags where informative; categoricals → "Unknown"; numeric → median |
+| 3. Missing Values | Targeted imputation per variable | Drop >50% NA; binary flags where informative; categoricals → "Unknown"; numeric → median |
 | 4. Feature Engineering | Derive binary & grouped features | `is_weekend`, `is_rush_hour`, `is_night`, `is_wet`; speed bands (≤50, 60–80, 90–100, 110+) |
 | 5. Outlier Detection | Remove geospatial & distance outliers | Drop outside NSW bounds; winsorise `Distance` at 99th percentile |
 | 6. Encoding | Model-dependent categorical encoding | Trees: R `factor`; kNN/LR: one-hot/ordinal; pool rare `LGA` (<1%) into `"Other"` |
