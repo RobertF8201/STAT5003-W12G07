@@ -1,12 +1,10 @@
 ---
-title: "NSW Road Crash Severity Prediction: Project Plan and EDA"
-author: "Group 7, Workshop 12"
+title: ""
+author: ""
 output:
   html_document:
     code_folding: hide
 ---
-# Introduction
-
 ```{r library, message = FALSE, warning = FALSE}
 library(ggplot2)
 library(dplyr)
@@ -14,6 +12,13 @@ library(readxl)
 library(forcats)
 library(scales)
 library(knitr)
+```
+
+```{css, echo=FALSE}
+body { font-family: "Times New Roman", Times, serif; font-size: 12pt; }
+h1.title { display: none; }
+h4.author { display: none; }
+h4.date   { display: none; }
 ```
 
 
@@ -24,92 +29,46 @@ df_merged <- left_join(df_crash, df_unit, by = "Crash ID")
 write.csv(df_merged, "nsw_road_crash_merged_2020_2024.csv", row.names = FALSE)
 ```
 
-# 1 Framing & Dataset Selection
+## 1 Framing & Dataset Selection
 
-## 1.1 Classification Task
+### 1.1 Classification Task
 
 Based on environmental conditions and traffic unit characteristics, predict the 
 severity of a road crash as a multi-class classification problem: Fatal, 
 Injury, or Non-casualty.
 
                                                       
-## 1.2 Research Question
+### 1.2 Research Question
 
 Given environmental conditions (weather, natural lighting, road surface, 
 speed limit) and traffic unit characteristics (number of traffic units involved, 
 type of traffic units, road classification), can we predict the severity 
 of a road crash in NSW?                                                        
   
-## 1.3 Motivation                                                
+### 1.3 Motivation                                                
 
-This research question has direct real-world relevance, NSW recorded 340 road 
-fatalities in 2024, with over two-thirds occurring in regional areas 
-(Transport for NSW, 2025), highlighting the need for data-driven approaches to 
-understanding crash severity. Our study affects the following groups:
-  
-**NSW Traffic Management Authorities**: By identifying key combinations of 
-environmental and traffic characteristics that contribute to severe crashes, 
-authorities can make targeted decisions such as adjusting speed limits, 
-improving road design, and increasing enforcement during high-risk conditions.   
+NSW recorded 340 road fatalities in 2024, with over two-thirds in regional areas (Transport for NSW, 2025). A predictive model for crash severity has direct value for: **Traffic Authorities** (targeted speed and road interventions), **Emergency Responders** (faster, evidence-based resource allocation), and **Policymakers & Insurers** (precise policy and pricing decisions). The dataset's 92,189 crash records with environmental, temporal, and vehicle-level features directly support this research question.
 
-**Emergency Response Teams**: In the early stages of a crash, predicting severity 
-based on environmental conditions can help allocate ambulance and emergency 
-resources more quickly and effectively.
+## 2 Consider & Gather Data 
 
-**Policymakers and Insurance Institutions**: Understanding which traffic unit types 
-(e.g. heavy vehicles) pose higher risks under specific environmental conditions 
-can inform more precise road safety policies and insurance pricing models.
+### 2.1 Data Source 
 
-The dataset contains 92,189 crash records across NSW from 2020 to 2024, covering 
-variables such as weather, natural lighting, road surface condition, speed 
-limit, number of traffic units involved, and traffic unit types: fully 
-supporting the environmental and traffic unit characteristics required by our 
-research question.
+Sourced from Transport for NSW via the Australian Government open data platform ([link](https://www.data.gov.au/data/dataset/nsw-2-nsw-crash-data)). Two files were used for 2020–2024: **CRASH.xlsx** (crash details, time, location, environment) and **TRAFFIC UNIT.xlsx** (vehicle type, manoeuvre, role, controlled flag), merged on Crash ID.
 
-A predictive model for crash severity enables data-driven prioritization, this 
-can help authorities allocate resources design intervention strategies, and form 
-policy based on evidence rather than intuition. 
+### 2.2 Dataset Overview
 
-# 2 Consider & Gather Data 
+The crash dataset contains 92,189 crash records, and the traffic dataset
+contains 170,962 records across NSW from 2020 to 2024. The dataset formed by
+merging both of these on Crash ID contains 170,962 records. The merged dataset
+is recorded at a vehicle level. This allows vehicle-specific characteristics to
+be incorporated into the crash severity increasing the richness of our dataset.
 
-## 2.1 Data Source 
 
-The data used in this study is sourced from the Australian Government open data platform
-
-**NSW Crash Data Dataset:** 
-https://www.data.gov.au/data/dataset/nsw-2-nsw-crash-data 
-
-This dataset is published by Transport for NSW and provides detailed information on road crashes in NSW, including environmental conditions, road characteristics, 
-vehicle types, and injury outcomes (Transport for NSW, 2024). 
-
-For this study, we utilized the Crash Dataset (NSW Road Crash Data - 2020-2024 
-- CRASH.xlsx) and Traffic Unit Dataset (NSW Road Crash Data - 2020-2024 
-- TRAFFIC UNIT.xlsx ) for 2020-2024. The crash dataset contains environmental and road-related variables (e.g. weather, road surface, and speed limit).
-
-- The crash dataset contains: 
-  - Crash Details (No. Killed, No. Seriously Injured, Severity of Crash) 
-  - time-related features (Day, Month, etc) 
-  - location attributes (Direction, latitude, longitude, Distance, etc) 
-  - environmental conditions (Weather, Natural Lighting, Speed Limit, etc.) 
-  
-- The traffic unit dataset contains vehicle-level variables: 
-  - TU type group (states vehicle type) 
-  - Manoeuvre (states vehicle movement at time of crash)
-  - TU role in first impact (states role of vehicle e.g. key traffic unit) 
-  - TU controlled flag (Whether classified as controlled or uncontrolled)
-  
+### 2.3 Dataset Justification
 ```{r, results='hide'}
 cat("Merged:", nrow(df_merged), "rows,", ncol(df_merged), "cols\n")
 colSums(is.na(df_merged))
 ```
-  
-## 2.2 Dataset Overview
-
-The crash dataset contains 92,189 crash records, and the traffic dataset 
-contains 170,962 records across NSW from 2020 to 2024. The dataset formed by 
-merging both of these on Crash ID contains 170,962 records. The merged dataset 
-is recorded at a vehicle level. This allows vehicle-specific characteristics to 
-be incorporated into the crash severity increasing the richness of our dataset.
 
 ```{r na visualisation, fig.width=7, fig.height=3}
 na_counts <- colSums(is.na(df_merged))
@@ -125,24 +84,20 @@ ggplot(na_df, aes(x = reorder(variable, -missing), y = missing)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-## 2.3 Dataset Justification
 
 The dataset meets the four key requirements outlined in the assignment:
 
 | Requirement | How it is met |
 |-------------|---------------|
-| **Large (>10,000 obs.)** | The merged dataset has 170,962 records, providing sufficient scale for robust statistical analysis, reliable estimation of predictor–severity relationships, and support for train/test validation. |
-| **Integrated (multiple sources)** | Formed by merging crash-level and traffic unit datasets via `Crash ID`, combining environmental, spatial, and vehicle-level information to enable more comprehensive modelling. |
-| **Messy (real-world challenges)** | Contains missing values and inconsistencies across weather, lighting, and vehicle variables. Merging introduces sparsity: crash-level attributes are duplicated across vehicle records while some vehicle fields lack values. High-missingness columns (Primary hazardous feature >95%, Primary temporary feature >98%) require dropping; moderate-missingness columns (Route no., Other TU type) require imputation strategies. |
-| **Multi-class classification** | The target `Degree of crash` has three classes — Fatal, Injury, and Non-casualty — with significant class imbalance (Fatal: ~1.4%), requiring imbalance-aware modelling and evaluation. |
+| **Large (>10,000 obs.)** | 170,962 merged records; sufficient for robust modelling and train/test validation. |
+| **Integrated (multiple sources)** | Crash and Traffic Unit tables merged via `Crash ID`; combines environmental, spatial, and vehicle-level features. |
+| **Messy (real-world challenges)** | Missing values throughout; high-NA columns (>95%) dropped; moderate-NA columns require imputation; merging introduces sparsity. |
+| **Multi-class classification** | Target `Degree of crash`: Fatal, Injury, Non-casualty; heavily imbalanced (Fatal ~1.4%), requiring imbalance-aware modelling. |
 
-**2.4 Summary**
 
-Overall, the dataset is well-suited for this study as it is large, integrated, messy, and supports a multi-class classification problem. Its combination of environmental, temporal, spatial, and vehicle-level features provides a strong foundation for modelling and predicting crash severity.
-
-# 3 Exploratory Data Analysis (EDA)
-## 3.1 Univariate Analysis
-### 3.1.1 Distribution
+## 3 Exploratory Data Analysis (EDA)
+### 3.1 Univariate Analysis
+#### 3.1.1 Distribution
 ```{r 311-row1, out.width='25%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
 ggplot(df_merged, aes(x = fct_infreq(`Degree of crash`))) +
     geom_bar() +
@@ -216,19 +171,18 @@ ggplot(df_tu, aes(x = `TU group`)) +
 
 The data shows significant class imbalance: Injury crashes are most frequent (114,355), followed by Non-casualty (54,191), with Fatal crashes being the minority (2,416). Most crashes occur in fine weather, daylight, and dry road conditions, suggesting traffic volume has more influence than weather on crash frequency. The 50-60 km/h speed zones account for the most crashes, with Sydney metro being the dominant urbanisation category. Car/car derivatives are the most common vehicle type, "Proceeding in lane" is the most frequent manoeuvre (~100,000), with all other manoeuvres being substantially less frequent. Key traffic units account for the largest share of roles in the first impact, and 2-vehicle crashes are the most common collision type.
 
-### 3.1.2 Missing Values
+#### 3.1.2 Missing Values
 ```{r na check, results='hide'}
 colSums(is.na(df_merged))
 ```
-
 Core modelling variables (Weather, Speed limit, Natural lighting, Degree of crash) have no missing values. Primary hazardous feature (168,803), Primary temporary feature (168,406), and Object hit 2 (165,996) have very high missingness due to their conditional nature and will be dropped during preprocessing.
 
-### 3.1.3 Outliers for Key Variables
+#### 3.1.3 Outliers for Key Variables
 ```{r summary of TU group, results='hide'}
 summary(df_merged$`No. of traffic units involved`)
 ```
 
-```{r boxplot-tu, fig.width=4, fig.height=3}
+```{r boxplot-tu, fig.width=3, fig.height=2}
 ggplot(df_merged, aes(y = `No. of traffic units involved`)) +
   geom_boxplot(fill = "steelblue", outlier.colour = "red", outlier.size = 1) +
   scale_y_log10() +
@@ -239,8 +193,8 @@ ggplot(df_merged, aes(y = `No. of traffic units involved`)) +
 
 The number of traffic units has a median of 2 and mean of 2.149, with IQR concentrated between 1 and 2. The maximum value of 26 is an extreme outlier and may be capped during preprocessing.
 
-## 3.2 Bivariate Analysis
-### 3.2.1 Features vs Outcomes
+### 3.2 Bivariate Analysis
+#### 3.2.1 Features vs Outcomes
 ```{r 321-row1, out.width='25%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
 ggplot(df_merged, aes(x = Weather, fill = `Degree of crash`)) +
   geom_bar(position = "fill") +
@@ -292,7 +246,7 @@ ggplot(df_merged, aes(x = `TU controlled flag`, fill = `Degree of crash`)) +
 
 Speed limit shows the strongest relationship with crash severity, with higher speed zones (100-110 km/h) having noticeably greater Fatal proportions. Pedestrians and motorcycles show elevated Injury proportions, while uncontrolled traffic units have higher Non-casualty proportions. Country non-urban areas show slightly higher Fatal proportions compared to urban areas, consistent with higher rural speed limits.
 
-### 3.2.2 Features vs Features
+#### 3.2.2 Features vs Features
 ```{r 322-row1, out.width='33%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
 df_merged %>%
   group_by(Weather, `Natural lighting`) %>%
@@ -348,162 +302,95 @@ df_merged %>%
 
 Fine weather strongly aligns with dry surfaces while rain almost exclusively pairs with wet conditions, confirming dataset consistency. Speed limits of 50-60 km/h dominate Sydney metro areas while 100-110 km/h zones concentrate in Country non-urban regions. Crashes predominantly occur in daylight across all urbanisation categories, with Sydney metro having the highest overall crash volume.
 
-## 3.3 Additional Visualisations
+### 3.3 Additional Visualisations
 To further support the exploratory analysis, additional visualizations and summary tables were produced to reveal temporal, spatial, and contextual patterns in crash severity. These displays go beyond simple univariate and bivariate summaries by highlighting high-risk combinations of conditions and identifying patterns that may influence feature selection and model choice.
 
-### 3.3.1 Crash Frequency by Day & Time
+#### 3.3.1 Temporal Patterns
 ```{r eda-helpers, message=FALSE, warning=FALSE}
-library(knitr)
-
-# Ensure ordered factors for time-related variables
 day_levels <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 df_merged$`Day of week of crash` <- factor(df_merged$`Day of week of crash`, levels = day_levels)
-
-# If Two-hour intervals is character, keep original order as it appears
-df_merged$`Two-hour intervals` <- factor(df_merged$`Two-hour intervals`,
-                                         levels = unique(df_merged$`Two-hour intervals`))
-
-# Order reporting year if needed
-df_merged$`Reporting year` <- factor(df_merged$`Reporting year`,
-                                     levels = sort(unique(df_merged$`Reporting year`)))
+df_merged$`Two-hour intervals` <- factor(df_merged$`Two-hour intervals`, levels = unique(df_merged$`Two-hour intervals`))
+df_merged$`Reporting year` <- factor(df_merged$`Reporting year`, levels = sort(unique(df_merged$`Reporting year`)))
 ```
-```{r heatmap-day-time, fig.width=8, fig.height=3.5}
+```{r temporal-pair, out.width='50%', fig.show='hold', fig.height=3.5, message=FALSE, warning=FALSE}
 df_merged %>%
   group_by(`Day of week of crash`, `Two-hour intervals`) %>%
   summarise(count = n(), .groups = "drop") %>%
   ggplot(aes(x = `Two-hour intervals`, y = `Day of week of crash`, fill = count)) +
   geom_tile(color = "white") +
   scale_fill_gradient(low = "white", high = "steelblue") +
-  labs(
-    title = "Crash Frequency by Day of Week and Time Interval",
-    x = "Two-hour Interval",
-    y = "Day of Week",
-    fill = "Count"
-  ) +
+  labs(title = "Crash Frequency by Day & Time", x = "Two-hour Interval", y = "Day of Week", fill = "Count") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-Crash frequency peaks during daytime and commuting hours, suggesting traffic exposure drives occurrence more than day of week alone. Time-related variables are likely to be useful predictors.
 
-### 3.3.2 Crash Severity by Year
-```{r severity-by-year, fig.width=5, fig.height=3}
 df_merged %>%
   group_by(`Reporting year`, `Degree of crash`) %>%
   summarise(count = n(), .groups = "drop") %>%
   ggplot(aes(x = `Reporting year`, y = count, fill = `Degree of crash`)) +
   geom_col(position = "fill") +
   scale_y_continuous(labels = scales::percent_format()) +
-  labs(
-    title = "Proportion of Crash Severity by Reporting Year",
-    x = "Reporting Year",
-    y = "Proportion",
-    fill = "Crash Severity"
-  ) +
+  labs(title = "Crash Severity by Year", x = "Reporting Year", y = "Proportion", fill = "Severity") +
   theme_minimal()
 ```
-Severity proportions are stable across years, confirming that class imbalance is a persistent structural feature of the dataset rather than an anomaly, reinforcing the need for imbalance-aware modelling.
+Crash frequency peaks during daytime and commuting hours, with severity proportions stable across years — confirming class imbalance is a persistent structural feature requiring imbalance-aware modelling.
 
-### 3.3.3 Fatal Rate by Speed & Urbanisation
-```{r fatal-rate-speed-urban, fig.width=6, fig.height=4}
+#### 3.3.2 Risk & Spatial Patterns
+```{r risk-spatial, out.width='33%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
 fatal_heatmap <- df_merged %>%
   filter(!is.na(`Speed limit`), !is.na(Urbanisation), !is.na(`Degree of crash`)) %>%
   group_by(`Speed limit`, Urbanisation) %>%
-  summarise(
-    total = n(),
-    fatal_rate = mean(`Degree of crash` == "Fatal"),
-    .groups = "drop"
-  ) %>%
-  filter(total >= 100)  # avoid unstable rates from tiny groups
+  summarise(total = n(), fatal_rate = mean(`Degree of crash` == "Fatal"), .groups = "drop") %>%
+  filter(total >= 100)
 
 ggplot(fatal_heatmap, aes(x = Urbanisation, y = `Speed limit`, fill = fatal_rate)) +
   geom_tile(color = "white") +
-  scale_fill_gradient(low = "white", high = "darkred",
-                      labels = scales::percent_format(accuracy = 0.1)) +
-  labs(
-    title = "Fatal Crash Proportion by Speed Limit and Urbanisation",
-    x = "Urbanisation",
-    y = "Speed Limit",
-    fill = "Fatal Proportion"
-  ) +
+  scale_fill_gradient(low = "white", high = "darkred", labels = scales::percent_format(accuracy = 0.1)) +
+  labs(title = "Fatal Rate by Speed & Urbanisation", x = "Urbanisation", y = "Speed Limit", fill = "Fatal %") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-Fatal crash proportions are highest in high-speed, less-urbanised zones, confirming that speed environment and spatial context jointly influence severity and motivating the use of interaction-capable models.
 
-### 3.3.4 High-Risk Crash Scenarios
-```{r high-risk-scenarios-table}
-risk_table <- df_merged %>%
-  filter(
-    !is.na(`Speed limit`),
-    !is.na(`Natural lighting`),
-    !is.na(Urbanisation),
-    !is.na(`Degree of crash`)
-  ) %>%
-  group_by(`Speed limit`, `Natural lighting`, Urbanisation) %>%
-  summarise(
-    total_crashes = n(),
-    fatal_prop = mean(`Degree of crash` == "Fatal"),
-    injury_prop = mean(`Degree of crash` == "Injury"),
-    non_casualty_prop = mean(`Degree of crash` == "Non-casualty (towaway)"),
-    .groups = "drop"
-  ) %>%
-  filter(total_crashes >= 200) %>%   # keep only meaningful groups
-  arrange(desc(fatal_prop), desc(total_crashes)) %>%   # sort by fatal proportion descending
-  slice_head(n = 10) %>%
-  mutate(
-    fatal_prop = scales::percent(fatal_prop, accuracy = 0.1),
-    injury_prop = scales::percent(injury_prop, accuracy = 0.1),
-    non_casualty_prop = scales::percent(non_casualty_prop, accuracy = 0.1)
-  ) %>%
-  rename(
-    `Speed Limit` = `Speed limit`,
-    `Natural Lighting` = `Natural lighting`,
-    `Total Crashes` = total_crashes,
-    `Fatal Proportion` = fatal_prop,
-    `Injury Proportion` = injury_prop,
-    `Non-casualty Proportion` = non_casualty_prop
-  )
-
-knitr::kable(
-  risk_table,
-  caption = "Table: High-risk crash scenarios ranked by fatal crash proportion"
-)
-```
-High fatal proportions cluster around combinations of high speed limits, darkness, and rural contexts, confirming that crash severity is shaped by interacting conditions rather than any single variable.
-
-### 3.3.5 Top 10 LGAs & Fatal Rate by Traffic Unit Type
-```{r lga-tu-pair, out.width='50%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
-top_lga <- df_merged %>%
-  filter(!is.na(LGA)) %>%
-  count(LGA, sort = TRUE) %>%
-  slice_head(n = 10)
-
+top_lga <- df_merged %>% filter(!is.na(LGA)) %>% count(LGA, sort = TRUE) %>% slice_head(n = 10)
 ggplot(top_lga, aes(x = reorder(LGA, n), y = n)) +
   geom_col(fill = "steelblue") +
   coord_flip() +
-  labs(title = "Top 10 LGAs by Crash Count", x = "LGA", y = "Number of Crashes") +
+  labs(title = "Top 10 LGAs by Crash Count", x = "LGA", y = "Count") +
   theme_minimal()
 
 tu_fatal <- df_merged %>%
   filter(!is.na(`TU type group`), !is.na(`Degree of crash`)) %>%
   group_by(`TU type group`) %>%
   summarise(total = n(), fatal_rate = mean(`Degree of crash` == "Fatal"), .groups = "drop") %>%
-  filter(total >= 100) %>%
-  arrange(desc(fatal_rate))
-
+  filter(total >= 100) %>% arrange(desc(fatal_rate))
 ggplot(tu_fatal, aes(x = reorder(`TU type group`, fatal_rate), y = fatal_rate)) +
   geom_col(fill = "tomato") +
   coord_flip() +
   scale_y_continuous(labels = scales::percent_format(accuracy = 0.1)) +
-  labs(title = "Fatal Crash Proportion by Traffic Unit Type",
-       x = "Traffic Unit Type", y = "Fatal Proportion") +
+  labs(title = "Fatal Rate by Traffic Unit Type", x = "TU Type", y = "Fatal %") +
   theme_minimal()
 ```
-Crash counts are spatially concentrated in a few LGAs, and fatal proportions vary substantially across traffic unit types — both reinforcing the predictive value of location and vehicle-level features.
+```{r high-risk-scenarios-table}
+risk_table <- df_merged %>%
+  filter(!is.na(`Speed limit`), !is.na(`Natural lighting`), !is.na(Urbanisation), !is.na(`Degree of crash`)) %>%
+  group_by(`Speed limit`, `Natural lighting`, Urbanisation) %>%
+  summarise(total_crashes = n(), fatal_prop = mean(`Degree of crash` == "Fatal"),
+            injury_prop = mean(`Degree of crash` == "Injury"),
+            non_casualty_prop = mean(`Degree of crash` == "Non-casualty (towaway)"), .groups = "drop") %>%
+  filter(total_crashes >= 200) %>%
+  arrange(desc(fatal_prop), desc(total_crashes)) %>%
+  slice_head(n = 10) %>%
+  mutate(fatal_prop = scales::percent(fatal_prop, accuracy = 0.1),
+         injury_prop = scales::percent(injury_prop, accuracy = 0.1),
+         non_casualty_prop = scales::percent(non_casualty_prop, accuracy = 0.1)) %>%
+  rename(`Speed Limit` = `Speed limit`, `Natural Lighting` = `Natural lighting`,
+         `Total Crashes` = total_crashes, `Fatal %` = fatal_prop,
+         `Injury %` = injury_prop, `Non-casualty %` = non_casualty_prop)
+knitr::kable(risk_table, caption = "High-risk crash scenarios ranked by fatal proportion")
+```
+Fatal rates are highest in high-speed, less-urbanised zones; crash counts concentrate in a few LGAs; and fatal proportions vary by traffic unit type — all confirming that location and vehicle-level features add predictive value.
 
 
-# 4 Project Planning
-## 4.1 Preprocessing Plan
+## 4 Project Planning
+### 4.1 Preprocessing Plan
 
 To transform the raw NSW Road Crash Data into a clean, model-ready dataset, we propose the following preprocessing pipeline. All data-dependent steps (imputation, encoding, scaling, resampling) will be performed **within cross-validation folds** to prevent data leakage (James et al., 2021).
 
@@ -519,20 +406,20 @@ To transform the raw NSW Road Crash Data into a clean, model-ready dataset, we p
 | 8. Class Imbalance | Resample within training fold only | SMOTE for Fatal minority class; compare with down-sampling during tuning (Chawla et al., 2002) |
 | 9. Train/Test Split | 80/20 stratified split; nested 5-fold CV | All steps in `tidymodels::recipe`; transformations fitted on training data only per fold |
 
-## 4.2 Model Plan: Proposed Classification Models
+### 4.2 Model Plan: Proposed Classification Models
 
 Based on the findings from EDA, we propose six classification models to predict **Degree of Crash** (a three-class outcome: Fatal, Injury, and Non-casualty). The EDA revealed that the target variable is extremely imbalanced—Fatal crashes account for a small proportion of the 92,189 observations—and that all predictor variables are categorical (e.g., `Weather`, `Natural lighting`, `Surface condition`, `Speed limit`, `Urbanisation`, `TU type group`). These characteristics directly inform the choice of models below. All models will be implemented in R using the `caret` package for a unified training and cross-validation interface.
 
 | # | Model | Justification | Implementation |
 |---|-------|---------------|----------------|
-| 1 | Multinomial Logistic Regression (Baseline) | Interpretable baseline; log-odds per predictor meaningful for stakeholders. All models benchmarked against this. | `multinom()` from `nnet`; dummy-encoded predictors; `class_weight` for imbalance. |
-| 2 | Decision Tree (CART) | Fully interpretable; captures interactions (e.g., high speed + rural → fatal) in a single branch. | `rpart`; depth tuned via CV; visualised with `rpart.plot`. |
+| 1 | Multinomial Logistic Regression | Interpretable baseline; log-odds per predictor meaningful for stakeholders. All models benchmarked against this. | `multinom()` from `nnet`; dummy-encoded predictors; `class_weight` for imbalance. |
+| 2 | Decision Tree | Fully interpretable; captures interactions (e.g., high speed + rural → fatal) in a single branch. | `rpart`; depth tuned via CV; visualised with `rpart.plot`. |
 | 3 | Random Forest | Bootstrap ensemble reduces variance; variable importance scores rank predictors. | `randomForest`; `classwt` for imbalance; feasible at >90k obs. |
-| 4 | Gradient Boosting (XGBoost) | High-performance; sequential correction of misclassifications effective for rare Fatal class. | `xgboost`; `nrounds`, `max_depth`, `eta` tuned via `caret`; `scale_pos_weight` for imbalance. |
-| 5 | K-Nearest Neighbours (KNN) | Non-parametric; tests local consistency — do similar-condition crashes share severity? | `class` + Gower distance for categoricals; optimal $k$ via CV. |
+| 4 | XGBoost | High-performance; sequential correction of misclassifications effective for rare Fatal class. | `xgboost`; `nrounds`, `max_depth`, `eta` tuned via `caret`; `scale_pos_weight` for imbalance. |
+| 5 | KNN | Non-parametric; tests local consistency — do similar-condition crashes share severity? | `class` + Gower distance for categoricals; optimal $k$ via CV. |
 | 6 | Naive Bayes | Natural for all-categorical data; probabilistic benchmark for individual feature signal. | `e1071`; fast under conditional independence; outputs class probabilities. |
 
-## 4.3 Evaluation Plan: Performance Metrics
+### 4.3 Evaluation Plan: Performance Metrics
 
 Standard accuracy is an inadequate evaluation metric for this problem due to the class imbalance in Degree of Crash. At the vehicle level, Fatal observations account for only 1.4% of the 170,962 records, with Injury at 66.9% and Non-casualty at 31.7%. A classifier that predicts Injury for every observation would achieve high accuracy simply because Injury is the most frequent class, while completely failing to identify any Fatal crash. The metrics below are selected to reflect both overall classifier performance and the disproportionate importance of correctly identifying fatal outcomes.
 
@@ -545,7 +432,7 @@ Standard accuracy is an inadequate evaluation metric for this problem due to the
 | Confusion Matrix | Secondary | 3×3 heatmap showing misclassification direction — e.g., Fatal predicted as Injury (most dangerous error). |
 | Cross-Validation Strategy | Validation | Grouped 5-fold CV by `Crash ID`; temporal split: 2020–2023 train, 2024 test; test set evaluated once only. |
 
-## 4.4 Timeline and Project Milestones
+### 4.4 Timeline and Project Milestones
 
 The project timeline has been structured in alignment with the assignment deadlines to ensure clear and systematic progression of tasks from understanding the dataset up to final model development and reporting.
 
@@ -564,7 +451,7 @@ The project timeline has been structured in alignment with the assignment deadli
 
 **Backup Plan:** The following contingency measures have been put in place. Two members are on standby at any time to cover tasks if a member is unable to meet a deadline; all work is stored in a shared GitHub repository. The team holds two meetings per week (Thursday in-person, Monday via Zoom) with 2 check-ins per week to monitor progress and flag delays early. Each member contributes approximately 20% across both phases.
 
-# References
+### References
 
 Chawla, N. V., Bowyer, K. W., Hall, L. O., & Kegelmeyer, W. P. (2002). SMOTE: Synthetic minority over-sampling technique. *Journal of Artificial Intelligence Research*, *16*, 321–357. https://doi.org/10.1613/jair.953
 
@@ -576,7 +463,7 @@ Transport for NSW. (2024). *NSW road crash data 2020–2024* [Dataset]. Australi
 
 Transport for NSW. (2025). *NSW road safety progress report 2024*. Centre for Road Safety. https://www.transport.nsw.gov.au/system/files/media/documents/2025/crs_road_safety_progress_report_2024.pdf
 
-# Acknowledgement of AI
+### Acknowledgement of AI
 
 Group 07 (Workshop 12) declares that all ideas, analysis, and written content 
 presented in this report are our own. We did not use generative AI to write our 
