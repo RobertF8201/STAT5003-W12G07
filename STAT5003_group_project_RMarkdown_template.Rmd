@@ -2,8 +2,6 @@
 title: "NSW Road Crash Severity Prediction: Project Plan and EDA"
 author: "Group 7, Workshop 12"
 output:
-  pdf_document: 
-    latex_engine: xelatex
   html_document:
     code_folding: hide
 ---
@@ -20,7 +18,10 @@ library(knitr)
 
 
 ```{r read merged dataset, message=FALSE, warning=FALSE}
-df_merged <- read.csv("nsw_road_crash_merged_2020_2024.csv", check.names = FALSE)
+df_crash <- read_xlsx("nsw_road_crash_data_2020-2024_crash.xlsx")
+df_unit <- read_xlsx("nsw_road_crash_data_2020-2024_traffic_unit.xlsx")
+df_merged <- left_join(df_crash, df_unit, by = "Crash ID")
+write.csv(df_merged, "nsw_road_crash_merged_2020_2024.csv", row.names = FALSE)
 ```
 
 # 1 Framing & Dataset Selection
@@ -98,7 +99,7 @@ road- related variables (e.g. weather, road surface, and speed limit )
   - TU role in first impact (states role of vehicle e.g. key traffic unit) 
   - TU controlled flag (Whether classified as controlled or uncontrolled)
   
-```{r}
+```{r, results='hide'}
 cat("Merged:", nrow(df_merged), "rows,", ncol(df_merged), "cols\n")
 colSums(is.na(df_merged))
 ```
@@ -180,96 +181,88 @@ foundation for modelling and predicting crash severity.
 # 3 Exploratory Data Analysis (EDA)
 ## 3.1 Univariate Analysis
 ### 3.1.1 Distribution
-```{r barpolot of degree of crash}
+```{r 311-row1, out.width='25%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
 ggplot(df_merged, aes(x = fct_infreq(`Degree of crash`))) +
     geom_bar() +
     geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5) +
     labs(title = "Distribution of Crash Severity", x = "Severity", y = "Count") +
     theme_minimal() + theme(legend.position = "none")
-```
-```{r barplot of weather}
+
 ggplot(df_merged, aes(x = fct_infreq(Weather))) +
   geom_bar(fill = "steelblue") +
-  labs(title = "Distribution of Weather Conditions",
-       x = "Weather", y = "Count") +
+  labs(title = "Distribution of Weather Conditions", x = "Weather", y = "Count") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   scale_y_continuous(labels = scales::comma)
-```
-```{r barplot of natrual lighting}
+
 ggplot(df_merged, aes(x = fct_infreq(`Natural lighting`))) +
   geom_bar(fill = "orange") +
   labs(title = "Distribution of Natural Lighting", x = "Lighting", y = "Count") +
   theme_minimal()
-```
-```{r bar plot of speed limit}
+
 df_merged$`Speed limit` <- factor(df_merged$`Speed limit`,
                               levels = c("10 km/h", "20 km/h", "30 km/h", "40 km/h",
                                          "50 km/h", "60 km/h", "70 km/h", "80 km/h",
                                          "90 km/h", "100 km/h", "110 km/h", "Unknown"))
-
 ggplot(df_merged, aes(x = `Speed limit`)) +
   geom_bar(fill = "tomato") +
   labs(title = "Distribution of Speed Limit", x = "Speed Limit", y = "Count") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-```{r barplot of Surface condition}
-ggplot(df_merged, aes(x = `Surface condition`)) + 
+```{r 311-row2, out.width='25%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
+ggplot(df_merged, aes(x = `Surface condition`)) +
   geom_bar(fill = "darkgreen") +
-  labs(title = "Distribution of Surface condition", x = "Surface condition", y = "Count") +
-  theme_minimal()+
+  labs(title = "Distribution of Surface Condition", x = "Surface Condition", y = "Count") +
+  theme_minimal() +
   scale_y_continuous(labels = scales::comma)
-```
-```{r barplot of Urbanisation}
-ggplot(df_merged, aes(x = fct_infreq(Urbanisation))) + 
-  geom_bar(fill = "purple") + 
-  labs(title = "Distribution of Urbanisation", x = "Urbanisation", y = "Count") + 
+
+ggplot(df_merged, aes(x = fct_infreq(Urbanisation))) +
+  geom_bar(fill = "purple") +
+  labs(title = "Distribution of Urbanisation", x = "Urbanisation", y = "Count") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-```{r bar plot of TU type group}
+
 ggplot(df_merged, aes(x = fct_infreq(`TU type group`))) +
     geom_bar(fill = "steelblue") +
     labs(title = "Distribution of Traffic Unit Type", x = "TU Type", y = "Count") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-```{r barplot of Manoeuvre}
+
 ggplot(df_merged, aes(x = fct_infreq(Manoeuvre))) +
     geom_bar(fill = "coral") +
     labs(title = "Distribution of Manoeuvre", x = "Manoeuvre", y = "Count") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-```{r barplot of TU role in first impact}
+```{r 311-row3, out.width='50%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
 ggplot(df_merged, aes(x = `TU role in first impact`)) +
     geom_bar(fill = "gold") +
     labs(title = "Distribution of TU Role in First Impact", x = "Role", y = "Count") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-```{r barplot of TU group}
+
 df_tu <- df_merged %>%
     mutate(`TU group` = ifelse(`No. of traffic units involved` >= 6, "6+",
-                                as.character(`No. of traffic units involved`)))                                                                            
-df_tu$`TU group` <- factor(df_tu$`TU group`, levels = c("1", "2", "3", "4", "5", "6+"))                                                                  
-ggplot(df_tu, aes(x = `TU group`)) +                                                                                                                     
-geom_bar(fill = "slateblue") +                          
-labs(title = "Distribution of No. of Traffic Units Involved", x = "No. of Traffic Units", y = "Count") + theme_minimal() 
+                                as.character(`No. of traffic units involved`)))
+df_tu$`TU group` <- factor(df_tu$`TU group`, levels = c("1", "2", "3", "4", "5", "6+"))
+ggplot(df_tu, aes(x = `TU group`)) +
+  geom_bar(fill = "slateblue") +
+  labs(title = "Distribution of No. of Traffic Units Involved", x = "No. of Traffic Units", y = "Count") +
+  theme_minimal()
 ```
 
 The data shows significant class imbalance: Injury crashes are most frequent (114,355), followed by Non-casualty (54,191), with Fatal crashes being the minority (2,416). Most crashes occur in fine weather, daylight, and dry road conditions, suggesting traffic volume has more influence than weather on crash frequency. The 50-60 km/h speed zones account for the most crashes, with Sydney metro being the dominant urbanisation category. Car/car derivatives are the most common vehicle type, "Proceeding in lane" is the most frequent manoeuvre (~100,000), with all other manoeuvres being substantially less frequent. Key traffic units account for the largest share of roles in the first impact, and 2-vehicle crashes are the most common collision type.
 
 ### 3.1.2 Missing Values
-```{r na check}
+```{r na check, results='hide'}
 colSums(is.na(df_merged))
 ```
 
 Core modelling variables (Weather, Speed limit, Natural lighting, Degree of crash) have no missing values. Primary hazardous feature (168,803), Primary temporary feature (168,406), and Object hit 2 (165,996) have very high missingness due to their conditional nature and will be dropped during preprocessing.
 
 ### 3.1.3 Outliers for Key Variables
-```{r summary of TU group}
+```{r summary of TU group, results='hide'}
 summary(df_merged$`No. of traffic units involved`)
 ```
 
@@ -286,55 +279,49 @@ The number of traffic units has a median of 2 and mean of 2.149, with IQR concen
 
 ## 3.2 Bivariate Analysis
 ### 3.2.1 Features vs Outcomes
-```{r weather vs degree of crash}
+```{r 321-row1, out.width='25%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
 ggplot(df_merged, aes(x = Weather, fill = `Degree of crash`)) +
   geom_bar(position = "fill") +
   labs(title = "Crash Severity by Weather", y = "Proportion") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-```{r speed limit vs degree of crash}
+
 ggplot(df_merged, aes(x = `Speed limit`, fill = `Degree of crash`)) +
   geom_bar(position = "fill") +
   labs(title = "Crash Severity by Speed Limit", y = "Proportion") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-```{r natural lighting vs degree of crash}
+
 ggplot(df_merged, aes(x = `Natural lighting`, fill = `Degree of crash`)) +
   geom_bar(position = "fill") +
   labs(title = "Crash Severity by Natural Lighting", y = "Proportion") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-```{r TU type group vs degree of crash}
+
 ggplot(df_merged, aes(x = `TU type group`, fill = `Degree of crash`)) +
   geom_bar(position = "fill") +
   labs(title = "Crash Severity by TU Type", y = "Proportion") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-```{r manoeuvre vs degree of crash}
+```{r 321-row2, out.width='25%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
 ggplot(df_merged, aes(x = fct_infreq(factor(Manoeuvre)), fill = `Degree of crash`)) +
   geom_bar(position = "fill") +
   labs(title = "Crash Severity by Manoeuvre", x = "Manoeuvre", y = "Proportion") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 7))
-```
-```{r Urbanisation vs degree of crash}
+
 ggplot(df_merged, aes(x = fct_infreq(factor(Urbanisation)), fill = `Degree of crash`)) +
   geom_bar(position = "fill") +
   labs(title = "Crash Severity by Urbanisation", x = "Urbanisation", y = "Proportion") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-```{r Surface condition vs degree of crash}
+
 ggplot(df_merged, aes(x = fct_infreq(factor(`Surface condition`)), fill = `Degree of crash`)) +
   geom_bar(position = "fill") +
-  labs(title = "Crash Severity by Surface condition", x = "Surface condition", y = "Proportion") +
+  labs(title = "Crash Severity by Surface Condition", x = "Surface Condition", y = "Proportion") +
   theme_minimal()
-```
-```{r TU controlled flag vs degree of crash}
+
 ggplot(df_merged, aes(x = `TU controlled flag`, fill = `Degree of crash`)) +
   geom_bar(position = "fill") +
   labs(title = "Crash Severity by TU Controlled Flag", x = "Controlled", y = "Proportion") +
@@ -344,7 +331,7 @@ ggplot(df_merged, aes(x = `TU controlled flag`, fill = `Degree of crash`)) +
 Speed limit shows the strongest relationship with crash severity, with higher speed zones (100-110 km/h) having noticeably greater Fatal proportions. Pedestrians and motorcycles show elevated Injury proportions, while uncontrolled traffic units have higher Non-casualty proportions. Country non-urban areas show slightly higher Fatal proportions compared to urban areas, consistent with higher rural speed limits.
 
 ### 3.2.2 Features vs Features
-```{r weather vs natural lighting}
+```{r 322-row1, out.width='33%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
 df_merged %>%
   group_by(Weather, `Natural lighting`) %>%
   summarise(count = n(), .groups = "drop") %>%
@@ -354,9 +341,7 @@ df_merged %>%
   scale_fill_gradient(low = "white", high = "steelblue") +
   labs(title = "Weather vs Natural Lighting", fill = "Count") +
   theme_minimal()
-```
 
-```{r speed limit vs urbanisation}
 df_merged %>%
   group_by(`Speed limit`, Urbanisation) %>%
   summarise(count = n(), .groups = "drop") %>%
@@ -366,8 +351,7 @@ df_merged %>%
   labs(title = "Speed Limit vs Urbanisation", fill = "Count") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-```{r Weather vs Surface condition}
+
 df_merged %>%
   group_by(Weather, `Surface condition`) %>%
   summarise(count = n(), .groups = "drop") %>%
@@ -378,8 +362,7 @@ df_merged %>%
   labs(title = "Weather vs Surface Condition", fill = "Count") +
   theme_minimal()
 ```
-
-```{r TU type group vs Manoeuvre}
+```{r 322-row2, out.width='50%', fig.show='hold', fig.height=4, message=FALSE, warning=FALSE}
 df_merged %>%
   group_by(`TU type group`, Manoeuvre) %>%
   summarise(count = n(), .groups = "drop") %>%
@@ -389,9 +372,7 @@ df_merged %>%
   labs(title = "TU Type vs Manoeuvre", fill = "Count") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 7))
-```
 
-```{r Urbanisation vs Natural lighting}
 df_merged %>%
   group_by(Urbanisation, `Natural lighting`) %>%
   summarise(count = n(), .groups = "drop") %>%
@@ -671,138 +652,54 @@ Raw Data (CRASH + TRAFFIC UNIT)
        └─ 10. SMOTE / down-sampling for class imbalance
 ```
 
-## 4.2 Model Plan: based on EDA, propose at least 5 classification models* suited to the data/problem with justification.
+## 4.2 Model Plan: based on EDA, propose at least 5 classification models suited to the data/problem with justification.
 
-Based on the findings from EDA, we propose six classification models to predict **Degree of Crash** (a three-class outcome: Fatal, Injury, and Non-casualty). The EDA revealed that the target variable is extremely imbalanced—Fatal crashes account for a small proportion of the 92,189 observations—and that all predictor variables are categorical (e.g., `Weather`, `Natural lighting`, `Surface condition`, `Speed limit`, `Urbanisation`, `TU type group`). These characteristics directly inform the choice of models below. 
+Based on the findings from EDA, we propose six classification models to predict **Degree of Crash** (a three-class outcome: Fatal, Injury, and Non-casualty). The EDA revealed that the target variable is extremely imbalanced—Fatal crashes account for a small proportion of the 92,189 observations—and that all predictor variables are categorical (e.g., `Weather`, `Natural lighting`, `Surface condition`, `Speed limit`, `Urbanisation`, `TU type group`). These characteristics directly inform the choice of models below. All models will be implemented in R using the `caret` package for a unified training and cross-validation interface.
 
-All models will be implemented in R using the `caret` package for a unified training and cross-validation interface.
+| # | Model | Justification | Implementation |
+|---|-------|---------------|----------------|
+| 1 | Multinomial Logistic Regression (Baseline) | Proposed as our interpretable baseline model. Produces interpretable coefficients (log-odds) for each predictor category, meaningful for road safety stakeholders (e.g., quantifying how much driving at night increases the log-odds of a fatal crash relative to daylight). All subsequent models will be benchmarked against this baseline. | `multinom()` from the `nnet` package with dummy-encoded predictors; `class_weight` argument to account for class imbalance. |
+| 2 | Decision Tree (CART) | Chosen for its full interpretability and ability to capture non-linear interactions between categorical features (e.g., the joint rule "high speed limit AND rural area → higher fatal risk" in a single branch). | `rpart` package; tree depth tuned via cross-validation to prevent overfitting; visualised using `rpart.plot` to communicate high-risk conditions to non-technical audiences. |
+| 3 | Random Forest | Extends the decision tree by training an ensemble of trees on bootstrap samples, significantly reducing variance. Provides variable importance scores to identify which predictors most strongly impact crash severity. | `randomForest` package; class imbalance handled via the `classwt` argument. Computationally feasible with >90k observations. |
+| 4 | Gradient Boosting Machine (XGBoost) | Proposed as our primary high-performance model. By sequentially correcting misclassifications from prior trees, it is particularly effective at learning from the rare Fatal class by exploiting subtle, high-value signals in the features. | `xgboost` package; hyperparameters (`nrounds`, `max_depth`, `eta`) tuned via `caret::trainControl`; `scale_pos_weight` adjusted to address class imbalance. |
+| 5 | K-Nearest Neighbours (KNN) | Included as a non-parametric, instance-based comparison model to test whether crash severity is locally consistent in feature space (i.e., whether crashes occurring under similar conditions tend to share the same outcome). | `class` package; Gower distance metric (via `gower` package) for categorical features; optimal value of $k$ selected via cross-validation. |
+| 6 | Naive Bayes | A natural fit for datasets where all features are categorical. Serves as a strong probabilistic benchmark: if more complex models cannot substantially outperform it, this suggests that the individual feature distributions already carry most of the predictive information. | `e1071` package; extremely fast to train under the conditional independence assumption; provides probability estimates for each severity class. |
 
-### 1. Multinomial Logistic Regression (Baseline)
-- **Justification:** Proposed as our interpretable baseline model. It produces interpretable coefficients (log-odds) for each predictor category, which are meaningful for road safety stakeholders (e.g., quantifying how much driving at night increases the log-odds of a fatal crash relative to daylight). All subsequent models will be benchmarked against this baseline.
-- **Implementation:** Categorical predictors will be encoded as dummy variables. We will use `multinom()` from the `nnet` package, utilising the `class_weight` argument to account for class imbalance.
-
-### 2. Decision Tree Classifier (CART)
-- **Justification:** Chosen for its full interpretability and ability to capture non-linear interactions between categorical features (e.g., capturing the joint rule "high speed limit AND rural area $\rightarrow$ higher fatal risk" in a single branch).
-- **Implementation:** Implemented using the `rpart` package. Tree depth will be tuned via cross-validation to prevent overfitting, and the resulting tree will be visualised using `rpart.plot` to communicate high-risk conditions to non-technical audiences.
-
-### 3. Random Forest Classifier
-- **Justification:** Extends the decision tree by training an ensemble of trees on bootstrap samples, significantly reducing variance. It provides variable importance scores to identify which predictors most strongly impact crash severity. 
-- **Implementation:** With >90k observations, it is computationally feasible using the `randomForest` package. Class imbalance will be handled via the `classwt` argument in `randomForest()`.
-
-### 4. Gradient Boosting Machine (XGBoost)
-- **Justification:** Proposed as our primary high-performance model. By sequentially correcting misclassifications from prior trees, it is particularly effective at learning from the rare minority class (Fatal crashes) by exploiting subtle, high-value signals in the features.
-- **Implementation:** Implemented using the `xgboost` package. Hyperparameters (`nrounds`, `max_depth`, `eta`) will be tuned via `caret::trainControl`. The `scale_pos_weight` parameter will be adjusted to address the class imbalance.
-
-### 5. K-Nearest Neighbours (KNN)
-- **Justification:** Included as a non-parametric, instance-based comparison model to test whether crash severity is locally consistent in feature space (i.e., whether crashes occurring under similar conditions tend to share the same outcome).
-- **Implementation:** Implemented using the `class` package. Since all features are categorical, the Gower distance metric (via the `gower` package) will be used. The optimal value of $k$ will be selected via cross-validation.
-
-### 6. Naive Bayes
-- **Justification:** A natural fit for datasets where all features are categorical. It serves as a strong probabilistic benchmark: if more complex models cannot substantially outperform it, this suggests that the individual distributions of features (e.g., Weather, Speed limit) already carry most of the predictive information.
-- **Implementation:** Implemented using the `e1071` package. Under the conditional independence assumption, it is extremely fast to train and provides probability estimates for each severity class.
-
-## 4.3 Evaluation Plan: propose and justify performance metrics for final model 
-evaluation.
+## 4.3 Evaluation Plan: propose and justify performance metrics for final model evaluation.
 
 Standard accuracy is an inadequate evaluation metric for this problem due to the class imbalance in Degree of Crash. At the vehicle level, Fatal observations account for only 1.4% of the 170,962 records, with Injury at 66.9% and Non-casualty at 31.7%. A classifier that predicts Injury for every observation would achieve high accuracy simply because Injury is the most frequent class, while completely failing to identify any Fatal crash. The metrics below are selected to reflect both overall classifier performance and the disproportionate importance of correctly identifying fatal outcomes.
 
-###Primary Metric: Macro-Averaged F1 Score
-The macro-averaged F1 score computes the F1 score (harmonic mean of precision and recall) for each of the three classes independently — Fatal, Injury, and Non-casualty — and then averages them with equal weight, regardless of class frequency. This ensures that performance on the rare Fatal class receives the same weight as the dominant Injury class, directly penalising models that achieve high overall accuracy by ignoring fatal crashes. Macro F1 is the primary metric for ranking and selecting the final model.
-
-###Primary Constraint: Fatal Class Recall
-Given the real-world stakes of missing a fatal crash, recall for the Fatal class is reported separately as a hard constraint alongside macro F1. Recall measures the proportion of actual Fatal crashes that the model correctly identifies. A model with high macro F1 but low Fatal recall will be deprioritised in model selection, as failing to flag potentially fatal road conditions is the most consequential error in this problem context.
-
-###Secondary Metric: Weighted F1 Score
-The weighted F1 score averages F1 per class weighted by each class's support (number of observations). This provides a realistic picture of overall classifier performance on the true class distribution and complements macro F1 by quantifying the trade-off between performance on rare versus frequent classes.
-
-###Secondary Metric: Cohen's Kappa (κ)
-Cohen's Kappa adjusts accuracy for the agreement expected by chance, given the class distribution. In an imbalanced three-class problem, even a naive classifier that always predicts the most frequent class has a non-trivial chance of being correct. Kappa values near 0 indicate performance no better than random guessing. Kappa is computed directly by caret's confusionMatrix() function and provides a clear sanity check on all models.
-
-###Secondary Metric: Confusion Matrix
-A confusion matrix will be produced for each model using caret's confusionMatrix() function and visualised as a heatmap using ggplot2. The 3×3 matrix reveals which severity classes are most frequently misclassified and in which direction — for example, whether Fatal crashes are being predicted as Injury, which is the most dangerous type of error in this context.
-
-###Validation Strategy
-Cross-validation folds are constructed at the crash level (grouped by Crash ID) to prevent data leakage from multiple vehicles belonging to the same crash appearing in both training and validation folds. Stratified grouped 5-fold cross-validation will be applied to the training data using caret's groupKFold() with Crash ID as the grouping variable, preserving class proportions across folds. A temporal split will be used: 2020–2023 data for training and 2024 data as the held-out test set, reflecting real-world deployment conditions where the model is used to predict future crashes. The final held-out test set is evaluated once only, after model selection is complete via cross-validation, to obtain unbiased estimates of generalisation performance.
+| Metric | Role | Justification |
+|--------|------|---------------|
+| Macro-Averaged F1 Score | Primary Metric | Computes F1 (harmonic mean of precision and recall) for each class independently — Fatal, Injury, and Non-casualty — then averages them with equal weight, regardless of class frequency. Ensures performance on the rare Fatal class receives the same weight as the dominant Injury class, directly penalising models that ignore fatal crashes. Primary metric for ranking and selecting the final model. |
+| Fatal Class Recall | Primary Constraint | Given the real-world stakes of missing a fatal crash, recall for the Fatal class is reported separately as a hard constraint alongside macro F1. Recall measures the proportion of actual Fatal crashes the model correctly identifies. A model with high macro F1 but low Fatal recall will be deprioritised, as failing to flag potentially fatal road conditions is the most consequential error in this context. |
+| Weighted F1 Score | Secondary Metric | Averages F1 per class weighted by each class's support (number of observations). Provides a realistic picture of overall classifier performance on the true class distribution and complements macro F1 by quantifying the trade-off between performance on rare versus frequent classes. |
+| Cohen's Kappa (κ) | Secondary Metric | Adjusts accuracy for the agreement expected by chance, given the class distribution. In an imbalanced three-class problem, even a naive classifier always predicting the most frequent class has a non-trivial chance of being correct. Kappa values near 0 indicate performance no better than random guessing. Computed directly by `caret`'s `confusionMatrix()`. |
+| Confusion Matrix | Secondary Metric | A 3×3 matrix produced for each model using `caret`'s `confusionMatrix()` and visualised as a heatmap using `ggplot2`. Reveals which severity classes are most frequently misclassified and in which direction — e.g., whether Fatal crashes are being predicted as Injury, which is the most dangerous error type in this context. |
+| Cross-Validation Strategy | Validation | CV folds constructed at the crash level (grouped by Crash ID) to prevent leakage from multiple vehicles in the same crash appearing in both training and validation folds. Stratified grouped 5-fold CV applied via `caret`'s `groupKFold()`, preserving class proportions. Temporal split used: 2020–2023 for training, 2024 as held-out test set, reflecting real-world deployment conditions. Final test set evaluated once only, after model selection is complete via CV. |
 
 ## 4.4 Timeline and Project Milestones
 
-The project timeline has been structured in alignment with the assignment 
-deadlines to ensure clear and systematic progression of tasks from understanding 
-the dataset up-to final model development and reporting. 
+The project timeline has been structured in alignment with the assignment deadlines to ensure clear and systematic progression of tasks from understanding the dataset up to final model development and reporting.
 
-**1-7 April: Problem Framing and Data Acquisition**
-
-Different datasets were evaluated and a final dataset was selected, along with 
-finalization of the research question. The crash and Traffic Unit datasets (2020
--2024) were sourced from the NSW Government open data platform. Initial 
-inspection was carried out to understand the dataset structure, key variables, 
-and differences. 
-
-**7-10 April: Data Integration and Initial Data Preparation**
-
-The crash and traffic unit datasets were merged using Crash ID, resulting in a 
-unified dataset containing 170,962 records at the vehicle level. Initial data 
-preparation involved examining missing values, identifying inconsistencies 
-introduced via the merging, and understanding different variable types. Full 
-preprocessing and feature engineering will be conducted in the modelling phase. 
-
-**10-14 April: Exploratory Data Analysis (EDA)**
-
-Univariate and bivariate analyses were performed to explore the distribution and 
-relationship between variables. This includes examining environmental factors 
-(weather, lighting), temporal variables(time of day, day of week), and vehicle-
-level characteristics (vehicle type, manoeuvre). Insights from EDA were used to 
-inform feature selection and guide model planning.  
-
-**14-17 April: Feature Planning and Model Design**
-
-Based on EDA findings, relevant features were identified and transformations 
-were planned, including the plan to encode categorical variables and aggregate 
-vehicle-level information. A set of classification models were also selected for 
-implementation in the next phase.
-
-**17-19 April: Plan & EDA Report Finalization**
-
-All findings were compiled into a structured R Markdown report and submitted by 
-the deadline.
-
-**6–10 May: Data Preprocessing and Baseline Modelling**
-
-Preprocessing steps such as handling missing values, encoding categorical variables, and feature engineering will be carried out. The baseline model (Multinomial Logistic Regression) will also be implemented and evaluated.
-
-**11–15 May: Advanced Model Development and Tuning**
-
-Advanced models will be implemented and refined, including hyperparameter tuning via cross-validation to improve performance.
-
-**16–20 May: Model Evaluation and Report Writing**
-
-Models will be evaluated using appropriate performance metrics, considering class imbalance in crash severity. The final model will be selected and justified. Results, insights, and interpretations will be consolidated into the final report.
-
-**21–24 May: Report Refinement**
-
-Final refinements will be made to ensure clarity, consistency, and adherence to the submission requirements.
-
-**25–31 May: Final Checks and Contribution Review**
-
-Team contributions will be reviewed and documented. A final check of the report will be conducted before submission.
+| Period | Milestone | Key Activities |
+|--------|-----------|----------------|
+| 1–7 April | Problem Framing & Data Acquisition | Evaluated datasets and selected the final dataset; finalised the research question. Sourced the Crash and Traffic Unit datasets (2020–2024) from the NSW Government open data platform. Conducted initial inspection of dataset structure, key variables, and differences. |
+| 7–10 April | Data Integration & Initial Data Preparation | Merged crash and traffic unit datasets using Crash ID, producing a unified dataset of 170,962 vehicle-level records. Examined missing values, identified inconsistencies introduced via merging, and understood variable types. Full preprocessing deferred to the modelling phase. |
+| 10–14 April | Exploratory Data Analysis (EDA) | Performed univariate and bivariate analyses on environmental factors (weather, lighting), temporal variables (time of day, day of week), and vehicle-level characteristics (vehicle type, manoeuvre). Insights used to inform feature selection and guide model planning. |
+| 14–17 April | Feature Planning & Model Design | Identified relevant features from EDA findings; planned transformations including categorical encoding and vehicle-level aggregation. Selected classification models for the next phase. |
+| 17–19 April | Plan & EDA Report Finalisation | Compiled all findings into a structured R Markdown report and submitted by the deadline. |
+| 6–10 May | Data Preprocessing & Baseline Modelling | Carry out preprocessing: handle missing values, encode categorical variables, and feature engineering. Implement and evaluate the baseline model (Multinomial Logistic Regression). |
+| 11–15 May | Advanced Model Development & Tuning | Implement and refine advanced models; tune hyperparameters via cross-validation to improve performance. |
+| 16–20 May | Model Evaluation & Report Writing | Evaluate models using appropriate performance metrics accounting for class imbalance. Select and justify the final model. Consolidate results, insights, and interpretations into the final report. |
+| 21–24 May | Report Refinement | Final refinements for clarity, consistency, and adherence to submission requirements. |
+| 25–31 May | Final Checks & Contribution Review | Review and document team contributions. Conduct a final check before submission. |
 
 **Backup Plan**
 
-The team acknowledges that unforeseen circumstances such as illness, personal 
-emergencies, or other commitments may arise during the project period. 
-With this in mind, the following contingency measures have been put in place. 
-The workload of members has been structured so that 2 members are on standby at 
-any given time, ready to take over tasks if a team member is unable to meet a 
-deadline. The remaining members will provide 2 check-ins per week to monitor 
-task progress and flag any delays early. If a task is not completed by its 
-deadline, it will be immediately handed over to a standby member to minimise 
-disruption to the overall timeline. All work will be stored in a shared 
-github repository accessible to all team members to ensure continuity.
+The team acknowledges that unforeseen circumstances such as illness, personal emergencies, or other commitments may arise during the project period. With this in mind, the following contingency measures have been put in place. The workload of members has been structured so that 2 members are on standby at any given time, ready to take over tasks if a team member is unable to meet a deadline. The remaining members will provide 2 check-ins per week to monitor task progress and flag any delays early. If a task is not completed by its deadline, it will be immediately handed over to a standby member to minimise disruption to the overall timeline. All work will be stored in a shared GitHub repository accessible to all team members to ensure continuity.
 
-The team will hold 2 meetings per week during project periods. One every Thursday 
-in-person after the workshop, and one every Monday via Zoom to track progress, 
-update team members, and provide support. Each member is expected to contribute 
-approximately 20% to the overall project across both phases.
+The team will hold 2 meetings per week during project periods. One every Thursday in-person after the workshop, and one every Monday via Zoom to track progress, update team members, and provide support. Each member is expected to contribute approximately 20% to the overall project across both phases.
 
 # References
 
