@@ -410,7 +410,7 @@ All data-dependent steps will be performed **within cross-validation folds** to 
 | 3. Missing Values | Targeted imputation per variable | Drop >85% NA; binary flags where informative; categoricals → "Unknown"; numeric → median |
 | 4. Feature Engineering | Derive binary & grouped features | `is_weekend`, `is_rush_hour`, `is_night`, `is_wet`; speed bands (≤50, 60–80, 90–100, 110+) |
 | 5. Outlier Detection | Remove geospatial & distance outliers | Drop outside NSW bounds; winsorise `Distance` at 99th percentile |
-| 6. Encoding | Model-dependent categorical encoding | Trees: R `factor`; kNN/SVM/LR: one-hot/ordinal; pool rare `LGA` (<1%) into `"Other"` |
+| 6. Encoding | Model-dependent categorical encoding | Trees: R `factor`; kNN/LR: one-hot/ordinal; pool rare `LGA` (<1%) into `"Other"` |
 | 7. Scaling | Standardise numerics for distance-based models | Z-score within fold for kNN, SVM; trees scale-invariant; add missingness indicators where informative |
 | 8. Class Imbalance | Resample within training fold only | SMOTE for Fatal minority class; compare with down-sampling during tuning (Chawla et al., 2002) |
 | 9. Train/Test Split | 80/20 stratified split; nested 5-fold CV | Inner CV loop for model tuning, outer loop for performance estimation to avoid optimistic bias, fitted on training data only per fold |
@@ -421,14 +421,14 @@ Six models selected to handle the three-class imbalanced target and predominantl
 
 | # | Model | Justification | Implementation |
 |---|-------|---------------|----------------|
-| 1 | Multinomial Logistic Regression | Interpretable baseline; log-odds per predictor meaningful for stakeholders. All models benchmarked against this. | `multinom()` from `nnet`; dummy-encoded predictors; `class_weight` for imbalance. |
+| 1 | Multinomial Logistic Regression | Interpretable baseline; log-odds per predictor meaningful for stakeholders. All models benchmarked against this. | `multinom()` from `nnet`; dummy-encoded predictors; inverse-frequency case weights via `caret`. |
 | 2 | Decision Tree | Fully interpretable; captures interactions (e.g., high speed + rural → fatal) in a single branch. | `rpart`; depth tuned via CV; visualised with `rpart.plot`. |
 | 3 | Random Forest | Bootstrap ensemble reduces variance; variable importance scores rank predictors. | `randomForest`; `classwt` for imbalance; feasible at >90k obs. |
-| 4 | XGBoost | High-performance; sequential correction of misclassifications effective for rare Fatal class. | `xgboost`; `nrounds`, `max_depth`, `eta` tuned via `caret`; `scale_pos_weight` for imbalance. |
-| 5 | KNN | Non-parametric; tests local consistency — do similar-condition crashes share severity? | `class` + Gower distance for categoricals; optimal $k$ via CV. |
-| 6 | Naive Bayes | Natural for all-categorical data; probabilistic benchmark for individual feature signal. | `e1071`; fast under conditional independence; outputs class probabilities. |
+| 4 | XGBoost | High-performance; sequential correction of misclassifications effective for rare Fatal class. | `xgboost`; `nrounds`, `max_depth`, `eta` tuned via `caret`; per-class sample weights for imbalance. |
+| 5 | KNN | Non-parametric; tests local consistency — do similar-condition crashes share severity? | `kknn` with Gower distance for mixed predictors; optimal $k$ via CV. |
+| 6 | Naive Bayes | Natural for categorical-dominant data; probabilistic benchmark for individual feature signal. | `e1071`; fast under conditional independence; outputs class probabilities. |
 
-#### 4.3 Evaluation Plan: Performance Metrics
+#### 4.3 Evaluation Plan: Evaluation Framework
 
 Standard accuracy is inadequate given severe class imbalance (Fatal: 1.4%, Injury: 66.9%, Non-casualty: 31.7%); the metrics below prioritise rare Fatal-class detection.
 Accuracy is not used as a primary metric, as it can be misleading in highly imbalanced datasets where predicting the majority class alone yields high accuracy.
@@ -440,7 +440,7 @@ Accuracy is not used as a primary metric, as it can be misleading in highly imba
 | Weighted F1 Score | Secondary | F1 weighted by class support; reflects real-world class distribution performance alongside macro F1. |
 | Cohen's Kappa (κ) | Secondary | Chance-adjusted accuracy; near-zero = no better than random. Via `caret`'s `confusionMatrix()`. |
 | Confusion Matrix | Secondary | 3×3 heatmap showing misclassification direction — e.g., Fatal predicted as Injury (most dangerous error). |
-| Cross-Validation Strategy | Validation | Grouped 5-fold CV by `Crash ID`; temporal split: 2020–2023 train, 2024 test; test set evaluated once only. |
+| Cross-Validation Strategy | Validation | 80/20 stratified split; nested 5-fold CV — inner loop for hyperparameter tuning, outer loop for performance estimation; test set evaluated once only. |
 
 #### 4.4 Timeline and Project Milestones
 
