@@ -45,7 +45,7 @@ Given environmental conditions (weather, lighting, road surface, speed limit) an
   
 #### 1.2 Motivation                                                
 
-NSW recorded 340 road fatalities in 2024, with over two-thirds in regional areas (Transport for NSW, 2025). A predictive model for crash severity has direct value for: **Traffic Authorities** (targeted speed and road interventions), **Emergency Responders** (faster, evidence-based resource allocation), and **Policymakers & Insurers** (precise policy and pricing decisions). The dataset’s 92,189 crash records, containing environmental, temporal, and vehicle-level features, are well-suited to addressing this research question. Combining crash-level and traffic unit data enables a more comprehensive understanding of both environmental and vehicle-level factors influencing crash severity, strengthening the predictive potential of the analysis.
+NSW recorded 340 road fatalities in 2024, with over two-thirds in regional areas (Transport for NSW, 2025). A predictive model for crash severity has direct value for: **Traffic Authorities** (targeted speed and road interventions), **Emergency Responders** (faster, evidence-based resource allocation), and **Policymakers & Insurers** (precise policy and pricing decisions). The combined dataset’s 170,962 records with 59 variables, containing environmental, temporal, and vehicle-level features, are well-suited to addressing this research question. Combining crash-level and traffic unit data enables a more comprehensive understanding of both environmental and vehicle-level factors influencing crash severity, strengthening the predictive potential of the analysis.
 
 ### 2 Consider & Gather Data 
 
