@@ -41,7 +41,7 @@ str(df_merged)
 
 #### 1.1 Research Question
 
-Given environmental conditions (weather, lighting, road surface, speed limit) and traffic unit characteristics (TU type, manoeuvre, number of units), can we predict NSW road crash severity (Fatal / Injury / Non-casualty) — a three-class classification problem?                                                        
+Given environmental conditions (weather, lighting, road surface, speed limit) and traffic unit characteristics (TU type, manoeuvre, number of units), can we predict NSW road crash severity (Fatal / Injury / Non-casualty): a three-class classification problem ?                                                        
   
 #### 1.2 Motivation                                                
 
