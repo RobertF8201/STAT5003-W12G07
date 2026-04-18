@@ -165,8 +165,8 @@ ggplot(df_tu, aes(x = `TU group`)) +
 
 **Key Findings:**
 
--  Significant class imbalance: Injury (114,355), Non-casualty (54,191), Fatal (2,416).
--  Most crashes occur in fine weather, daylight, and 50–60 km/h zones
+-  Significant class imbalance - Fatal(~1.4%), accuracy alone can be misleading 
+-  Most crashes occur in fine weather, daylight, and 50–60 km/h zones. Signals come from rarer combinations favouring interaction capturing tree models
 
 ##### 3.1.2 Missing Values
 ```{r na check, results='hide'}
@@ -188,7 +188,7 @@ ggplot(df_merged, aes(y = `No. of traffic units involved`)) +
   theme_minimal()
 ```
 
-Traffic units: median 2 (mean 2.15), IQR 1–2; max 26 is an extreme outlier likely capped.
+**Traffic units**: median 2 (mean 2.15), IQR 1–2; max 26 is an extreme outlier likely capped.
 
 #### 3.2 Bivariate Analysis
 ##### 3.2.1 Features vs Outcomes
@@ -244,8 +244,8 @@ ggplot(df_merged, aes(x = `TU controlled flag`, fill = `Degree of crash`)) +
 **Key Findings:**
 
 -  Speed limit shows the strongest relationship with severity: 100–110 km/h zones have noticeably higher Fatal proportions. 
--  Pedestrians and motorcycles show elevated Injury proportions
--  uncontrolled TUs have higher Non-casualty proportions.
+-  Pedestrians and motorcycles show elevated Injury proportions, validation planned in in preprocessing
+-  uncontrolled TUs have higher Non-casualty proportions, confirming it carries discriminative signal for Non-casualty
 
 ##### 3.2.2 Features vs Features
 ```{r 322-row1, out.width='33%', fig.show='hold', fig.height=3, message=FALSE, warning=FALSE}
@@ -302,9 +302,9 @@ df_merged %>%
 ```
 **Key Findings:**
 
--  50–60 km/h zones dominate Sydney metro;
--  100–110 km/h zones concentrate in Country non-urban regions. 
--  Crashes occur predominantly in daylight across all urbanisation categories.
+-  Speed Limit and Urbanisation are strongly co-linear. Logistic Regression and KNN will require encoding while trees can handle this natively. 
+-  Weather and Surface show correlation suggesting is_wet is a feature to consolidate signal 
+-  Crashes predominantly in daylight across urbanization categories.Validate via post-modelling feature importance
 
 #### 3.3 Additional Visualisations
 
@@ -391,11 +391,9 @@ knitr::kable(risk_table, caption = "High-risk crash scenarios ranked by fatal pr
 ```
 **Key Findings:**
 
--  Fatal rates are highest in high-speed, less-urbanised zones
--  crash counts concentrate in a few LGAs
--  fatal proportions vary by traffic unit type 
-
-All confirming that location and vehicle-level features add predictive value.
+-  Fatal rates are highest in high-speed, less-urbanised zones favoring interaction based models
+-  crash counts concentrate in a few LGAs, justifying planned pooling to prevent high cardinality overfitting 
+-  fatal proportions vary by traffic unit type, confirming TU-level binary flag adds predictive value  
 
 
 ### 4 Project Planning
